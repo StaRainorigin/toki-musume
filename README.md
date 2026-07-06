@@ -1,9 +1,8 @@
-# TokiMusume (時娘)
+# TokiMusume (时小姬)
 
-> 時を守る娘 — 你的时间管理伙伴
+> 时を守る姬 — 你的时间管理伙伴
 
 一个 Windows 桌面应用，以二次元管家娘形象陪伴你，帮你管理时间、监督摸鱼、总结每日活动。
-
 ## ✨ 特性
 
 - 🔍 **活动感知** — 自动识别你在做什么（窗口标题、进程名、OCR）
@@ -56,7 +55,7 @@ python -m toki_musume
 ```yaml
 persona:
   user_name: "主人"          # 你想被叫什么
-  companion_name: "時娘"     # 伙伴叫什么
+  companion_name: "时小姬"   # 伙伴叫什么
   personality:
     tsundere: 3              # 傲娇：0=温柔, 10=嘴硬心软
     strictness: 5            # 严厉：0=随和, 10=严格
