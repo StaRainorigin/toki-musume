@@ -74,17 +74,39 @@ TokiMusume 是一个 Windows 桌面应用，以二次元管家娘形象陪伴用
 
 ### 1. 活动监控引擎 (Monitor Engine)
 
-#### 分层采集策略
+#### 采集策略：事件驱动 + 轮询兜底
+
+采用被动事件监听为主、主动轮询为辅的混合策略：
+
+**被动监听 (SetWinEventHook)** — 实时响应，零延迟
+
+| 事件 | Win32 常量 | 用途 |
+|------|-----------|------|
+| 前台窗口切换 | `EVENT_SYSTEM_FOREGROUND` | 用户切换应用，更新当前活动 |
+| 窗口标题变化 | `EVENT_OBJECT_NAMECHANGE` | 游戏结算、页面切换等 |
+| 窗口创建/销毁 | `EVENT_OBJECT_CREATE/DESTROY` | 程序启动/退出追踪 |
+| 窗口状态变化 | `EVENT_OBJECT_STATECHANGE` | 最小化/还原等 |
+
+**主动轮询** — 兜底保障，防止事件丢失
 
 | 层级 | 方法 | 成本 | 信息量 | 采样频率 |
 |------|------|------|--------|----------|
-| L1 | 前台窗口标题 + 进程名 | 几乎为零 | 中 | 每 5 秒 |
+| L1 | 前台窗口标题 + 进程名 (GetForegroundWindow) | 几乎为零 | 中 | 每 5 秒 |
 | L2 | 浏览器标签页标题（Accessibility API） | 低 | 高 | 每 10 秒 |
 | L3 | 屏幕截图 + OCR | 中（CPU/GPU） | 很高 | 每 30-60 秒 |
 
-核心思路：L1 为主力，L3 为补充。大部分场景窗口标题+进程名足够判断活动。仅在窗口标题信息不足（如浏览器）时启用 OCR。
+核心思路：事件钩子实时驱动，轮询兜底防丢失。L1 为主力，L3 为补充。大部分场景窗口标题+进程名足够判断活动。仅在窗口标题信息不足（如浏览器）时启用 OCR。
 
 L3 的区域化 OCR：当检测到特定应用（如游戏）时，仅截取配置的屏幕区域，降低资源消耗并提高识别精度。
+
+**典型触发场景：**
+
+| 场景 | 触发方式 | 说明 |
+|------|----------|------|
+| Apex 打完出结算 | `EVENT_OBJECT_NAMECHANGE` | 窗口标题/内容变化，触发区域 OCR 识别战绩 |
+| LOL 打完回客户端 | `EVENT_OBJECT_NAMECHANGE` + `EVENT_SYSTEM_FOREGROUND` | LeagueClient 窗口标题变化 |
+| 切换应用 | `EVENT_SYSTEM_FOREGROUND` | 前台窗口变了，即时响应 |
+| 打开/关闭程序 | `EVENT_OBJECT_CREATE/DESTROY` | 窗口出现/消失 |
 
 #### 活动分类流程
 
@@ -346,7 +368,8 @@ toki-musume/
 │       │   └── mode_manager.py     # 监督/陪伴模式管理
 │       ├── monitor/
 │       │   ├── __init__.py
-│       │   ├── collector.py        # 采集调度（L1/L2/L3）
+│       │   ├── collector.py        # 采集调度（L1/L2/L3 轮询）
+│       │   ├── event_hook.py       # SetWinEventHook 事件监听
 │       │   ├── window.py           # Win32 窗口信息获取
 │       │   └── ocr.py              # OCR 识别（全屏 + 区域）
 │       ├── reminder/
