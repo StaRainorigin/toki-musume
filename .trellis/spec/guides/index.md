@@ -1,97 +1,68 @@
-# Thinking Guides
+# Cross-Layer Guides
 
-> **Purpose**: Expand your thinking to catch things you might not have considered.
+## Project Architecture
 
----
+TokiMusume (偷瞄姬) 是一个 Python Windows 桌面应用，单体模块化架构。
 
-## Why Thinking Guides?
-
-**Most bugs and tech debt come from "didn't think of that"**, not from lack of skill:
-
-- Didn't think about what happens at layer boundaries → cross-layer bugs
-- Didn't think about code patterns repeating → duplicated code everywhere
-- Didn't think about edge cases → runtime errors
-- Didn't think about future maintainers → unreadable code
-
-These guides help you **ask the right questions before coding**.
-
----
-
-## Available Guides
-
-| Guide | Purpose | When to Use |
-|-------|---------|-------------|
-| [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md) | Identify patterns and reduce duplication | When you notice repeated patterns |
-| [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | Think through data flow across layers | Features spanning multiple layers |
-
----
-
-## Quick Reference: Thinking Triggers
-
-### When to Think About Cross-Layer Issues
-
-- [ ] Feature touches 3+ layers (API, Service, Component, Database)
-- [ ] Data format changes between layers
-- [ ] Multiple consumers need the same data
-- [ ] You're not sure where to put some logic
-- [ ] You are adding an event kind, JSONL record, RPC payload, or config field
-- [ ] UI / command code starts casting raw payload fields directly
-
-→ Read [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md)
-
-### When to Think About Code Reuse
-
-- [ ] You're writing similar code to something that exists
-- [ ] You see the same pattern repeated 3+ times
-- [ ] You're adding a new field to multiple places
-- [ ] **You're modifying any constant or config**
-- [ ] **You're creating a new utility/helper function** ← Search first!
-- [ ] Two files read the same untyped payload field with local casts
-- [ ] Multiple branches update the same derived state from `kind` / `action`
-
-→ Read [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md)
-
-### When Verifying AI Cross-Review Results
-
-- [ ] Reviewer claims "user input can be malicious" → Check the actual data source (internal manifest? user config? external API?)
-- [ ] Reviewer flags "missing validation" → Is the data from a trusted internal source?
-- [ ] Reviewer says "behavior change" → Read the code comments — is it intentional design?
-- [ ] Reviewer identifies a "bug" in test → Mentally delete the feature being tested — does the test still pass? If yes → tautological test
-
-**Common AI reviewer false-positive patterns**:
-1. **Trust boundary confusion**: Treating internal data (bundled JSON manifests) as untrusted external input
-2. **Ignoring design comments**: Flagging intentional behavior documented in code comments as bugs
-3. **Variable misreading**: Not tracing a variable to its actual definition (e.g., Map keyed by path vs name)
-
-**Verification rule**: Every CRITICAL/WARNING finding must be verified against the actual code before prioritizing. Budget ~35% false-positive rate for AI reviews.
-
----
-
-## Pre-Modification Rule (CRITICAL)
-
-> **Before changing ANY value, ALWAYS search first!**
-
-```bash
-# Search for the value you're about to change
-grep -r "value_to_change" .
+```
+src/toki_musume/
+├── main.py              # 入口
+├── config.py            # 配置加载
+├── core/                # 核心引擎
+├── monitor/             # 活动采集
+├── reminder/            # 提醒引擎
+├── report/              # 报告引擎
+├── llm/                 # LLM 客户端
+├── storage/             # 数据库
+├── profiles/            # 应用档案
+└── ui/                  # 系统托盘 + 通知 + 报告窗口
 ```
 
-This single habit prevents most "forgot to update X" bugs.
+## Data Flow
 
----
+```
+用户活动 → Monitor(采集) → Core(分类+合并) → Storage(持久化)
+                                           → Reminder(检查+生成消息) → UI(通知)
+                                           → Report(汇总) → UI(报告窗口)
+```
 
-## How to Use This Directory
+## Key Conventions
 
-1. **Before coding**: Skim the relevant thinking guide
-2. **During coding**: If something feels repetitive or complex, check the guides
-3. **After bugs**: Add new insights to the relevant guide (learn from mistakes)
+### 配置管理
 
----
+- 所有配置在 `config.yaml`，YAML 格式
+- 用户从 `config.example.yaml` 复制，填入个人设置
+- `config.yaml` 不提交 Git
+- 配置通过 `config.py` 统一加载，提供类型安全的访问接口
 
-## Contributing
+### 异步设计
 
-Found a new "didn't think of that" moment? Add it to the relevant guide.
+- 采集、LLM 调用、OCR 等耗时操作在后台线程
+- UI 线程仅负责渲染和用户交互
+- 模块间通过信号/回调通信，不直接调用
 
----
+### LLM 使用原则
 
-**Core Principle**: 30 minutes of thinking saves 3 hours of debugging.
+- 规则优先，LLM 兜底（分类场景）
+- LLM 生成消息而非固定模板（提醒/报告场景）
+- 所有 LLM 调用异步，失败有 fallback
+- Prompt 模板集中管理，注入性格和上下文变量
+
+### 性格系统
+
+- 5 个数值维度（tsundere, strictness, playfulness, caring, chattiness）
+- 维度值影响 LLM prompt，不硬编码行为
+- 监督/陪伴模式通过调节 strictness 和 chattiness 的权重来改变行为强度
+
+### 错误处理
+
+- LLM 调用失败：分类回退到规则默认值，提醒使用 fallback 消息，报告标注"生成失败"
+- OCR 失败：跳过本次 OCR，不影响 L1 采集
+- 数据库错误：记录日志，不崩溃
+- 所有错误通过 `logging` 模块记录，不 print
+
+## Anti-Patterns
+
+- 不要跨模块直接导入内部实现，通过公共接口访问
+- 不要在多个模块中重复定义数据模型，集中在 `storage/models.py`
+- 不要假设网络始终可用，所有 LLM 调用必须有离线 fallback
