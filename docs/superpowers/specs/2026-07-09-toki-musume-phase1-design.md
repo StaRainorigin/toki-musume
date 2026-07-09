@@ -496,3 +496,23 @@ OCR 内容、窗口标题里可能有敏感信息。第一阶段**先不去敏**
 - **第二阶段衔接点**：感知层的轮询可被 `SetWinEventHook` 事件源替代/补充；摸鱼检测流程不变，只是事件来源更多。Rust 侧新增 `set_win_event_hook` command。
 - **第三阶段衔接点**：应用专属定制复用第二阶段的区域 OCR diff，新增"应用规则配置"数据结构。
 - **第四阶段衔接点**：性格关键词系统扩展 System prompt 生成；Live2D 替换普通窗口为透明悬浮窗，UI 逻辑复用。
+
+## 15. 参考资料与后续融合备忘
+
+### 前序设计：`E:\Devs\day_recorder`（Python + PyQt6 版）
+
+本项目曾有一版 Python + PyQt6 + Win32 的设计文档（代码未落地），位于 `E:\Devs\day_recorder`。该仓库的 `docs/superpowers/specs/2026-07-06-toki-musume-design.md` 和 `docs/superpowers/plans/2026-07-08-toki-musume-v1.md` 包含更细粒度的设计。当前 Tauri + Vue 版按"边做边吸收"原则，在实现到对应模块时参考融合以下内容：
+
+| 模块 | Python 版值得吸收的点 | 对应本 spec 章节 |
+|------|----------------------|-----------------|
+| 性格系统 | 5 维数值（傲娇/严厉/俏皮/关心/话多）参数化控制 prompt，比本版的"默认性格"丰富；第四阶段做完整性格时直接借鉴数据结构和 prompt 构造方式 | §12 |
+| LLM 客户端 | 多 provider + 自定义 base_url + fallback 兜底接口设计；prompt 模板（性格维度→自然语言描述、reminder_prompt、report_prompt）语言无关，可翻译成 TS | §7 |
+| 日志聚合 | 连续同类活动合并 duration、idle 超阈值结束当前记录——比本版的 log-aggregator 更成熟 | §9、Task 16 |
+| SQLite schema | 6 张表（activities/category_rules/goals/daily_summaries/weekly_summaries/reminder_rules/reminder_history）的 DDL 设计更完整，有 reminder_history 和 category_rules；本版 schema 可在此基础上扩展 | §9 |
+| 规则优先策略 | "80% 正则/规则本地分类，仅模糊场景调 LLM"——与本版的"黑白名单本地秒判 + LLM fallback"一致，Python 版描述更清晰 | §6 |
+| 感知层扩展 | L2（浏览器标签页标题，Accessibility API）、L3（屏幕 OCR）三层设计；第二阶段加 OCR 时可参考 | §6、第二阶段 |
+| App Profiles | LOL/Apex 区域 OCR + 胜负互动台词的定制档案设计；第三阶段直接参考 | §14、第三阶段 |
+| 提醒冷却 | reminder_history 表查询控制冷却，比本版的"全局冷却+概率"更精细（可按提醒类型分别冷却） | §6.4、§8 |
+| 定时调度 | L1 5s / L2 10s / L3 60s / 日报 22:00 / 周报周日 20:00 的时间表设计 | §10 |
+
+**融合原则**：不推翻当前 Tauri 计划，在实现到对应 Task 时查阅 Python 版设计文档的相关段落，吸收精华后用 Rust/TS 重写。
