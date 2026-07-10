@@ -4,7 +4,6 @@ import {
   startGoal,
   endGoal,
   startRest,
-  endRest,
   enterCompanion,
   checkRestTimeout,
 } from './mode-machine'

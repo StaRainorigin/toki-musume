@@ -37,14 +37,14 @@ fn init_database(app: tauri::AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn append_log(app: tauri::AppHandle, event: storage::LogEventInput) -> Result<(), String> {
+fn append_log(_app: tauri::AppHandle, event: storage::LogEventInput) -> Result<(), String> {
     let app_dir = get_app_data_dir()?;
     let logs_dir = app_dir.join("logs");
     storage::append_log_event(&logs_dir, &event)
 }
 
 #[tauri::command]
-fn read_logs(app: tauri::AppHandle, start_date: String, end_date: String) -> Result<Vec<String>, String> {
+fn read_logs(_app: tauri::AppHandle, start_date: String, end_date: String) -> Result<Vec<String>, String> {
     let app_dir = get_app_data_dir()?;
     let logs_dir = app_dir.join("logs");
     storage::read_log_events(&logs_dir, &start_date, &end_date)
@@ -55,6 +55,29 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(DbState(Mutex::new(None)))
+        .setup(|app| {
+            use tauri::menu::{Menu, MenuItem};
+            let show = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show, &quit])?;
+            let _tray = tauri::tray::TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .menu(&menu)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .build(app)?;
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             get_foreground_window,
             get_idle_ms,

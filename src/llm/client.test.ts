@@ -21,7 +21,7 @@ describe('LLMClient', () => {
   })
 
   it('chatWithIntent 解析 JSON 响应', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({
         choices: [{ message: { content: '{"reply":"好的","intent":null}' } }],
@@ -34,7 +34,7 @@ describe('LLMClient', () => {
   })
 
   it('chatWithIntent 降级处理非 JSON', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({
         choices: [{ message: { content: '就是一句普通回复' } }],
@@ -47,7 +47,7 @@ describe('LLMClient', () => {
   })
 
   it('judgeSlack 解析失败时保守判 related=true', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({
         choices: [{ message: { content: '这不是 JSON' } }],

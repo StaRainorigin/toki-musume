@@ -32,7 +32,7 @@ export async function generateDailySummary(
     slackCount: aggregated.slackCount,
     sokaiCount: aggregated.sokaiCount,
     sokaiTotalMinutes: aggregated.sokaiTotalMinutes,
-    goals: aggregated.goals,
+    goals: aggregated.goals as DailySummary['goals'],
     comment,
     generatedAt: Date.now(),
   }

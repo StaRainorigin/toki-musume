@@ -1,4 +1,4 @@
-import { getRuntimeState, getActiveGoal, initDatabase, getAppProfiles } from '../tauri-bridge'
+import { getRuntimeState, getActiveGoal, initDatabase } from '../tauri-bridge'
 import { AppProfileStore } from '../slack/app-profiles'
 import type { ModeMachineState } from '../state/mode-machine'
 import { createInitialState } from '../state/mode-machine'

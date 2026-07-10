@@ -62,8 +62,8 @@ pub fn read_log_events(
 
 fn format_date(ts: i64) -> String {
     let secs = ts / 1000;
-    let dt = chrono::NaiveDateTime::from_timestamp_opt(secs, 0)
-        .unwrap_or_else(|| chrono::NaiveDateTime::from_timestamp(0, 0));
+    let dt = chrono::DateTime::from_timestamp(secs, 0)
+        .unwrap_or_else(|| chrono::DateTime::UNIX_EPOCH);
     dt.format("%Y-%m-%d").to_string()
 }
 
