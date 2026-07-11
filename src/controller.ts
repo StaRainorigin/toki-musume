@@ -21,7 +21,7 @@ import { CompanionTriggerEngine, type CompanionEvent } from './companion/trigger
 import { arbitrate, generateCompanionMessage, computeNewCooldown } from './companion/arbiter'
 import { LLMClient } from './llm/client'
 import { buildSystemPrompt, buildChatPrompt } from './llm/prompts'
-import { appendLog, saveRuntimeState, saveGoal } from './tauri-bridge'
+import { appendLog, saveRuntimeState, saveGoal, getIdleMs, writeConfigFile } from './tauri-bridge'
 import { recoverState } from './recovery/runtime-state'
 import { generateDailySummary } from './summary/daily'
 import { SummaryScheduler } from './scheduler'
@@ -178,17 +178,23 @@ export class AppController {
     })
 
     if (this.llm.isConfigured('generate')) {
-      const system = buildSystemPrompt(this.persona, this.modeMachine.mode, this.modeMachine.activeGoal)
-      const { user } = buildChatPrompt(this.chatHistory, text)
+      const personaSystem = buildSystemPrompt(this.persona, this.modeMachine.mode, this.modeMachine.activeGoal)
+      const { system: intentSystem, user } = buildChatPrompt(this.chatHistory, text)
       try {
         const result = await this.llm.chatWithIntent(
-          [{ role: 'system', content: system }, { role: 'user', content: user }],
+          [
+            { role: 'system', content: personaSystem },
+            { role: 'system', content: intentSystem },
+            { role: 'user', content: user },
+          ],
           'generate',
         )
+        console.log('[DEBUG] LLM result:', JSON.stringify(result))
         this.pushAssistant(result.reply)
         this.chatHistory.push({ role: 'assistant', content: result.reply })
         await this.handleIntent(result)
-      } catch {
+      } catch (e) {
+        console.error('[DEBUG] LLM error:', e)
         this.pushSystem('回复生成失败')
       }
     } else {
@@ -198,8 +204,12 @@ export class AppController {
   }
 
   private async handleIntent(result: ChatLLMResponse): Promise<void> {
-    if (!result.intent) return
+    if (!result.intent) {
+      console.log('[DEBUG] No intent detected')
+      return
+    }
     const intent = result.intent
+    console.log('[DEBUG] Handling intent:', JSON.stringify(intent))
     switch (intent.type) {
       case 'switch_mode':
         if (intent.mode === 'companion') {
@@ -252,6 +262,16 @@ export class AppController {
   }
 
   async switchMode(m: 'companion' | 'study' | 'work' | 'rest'): Promise<void> {
+    // 如果有活跃目标且切换到别的模式，先自动结束当前目标
+    if (this.modeMachine.activeGoal && this.modeMachine.mode !== m) {
+      const r = endGoal(this.modeMachine)
+      if (r.ok) {
+        this.modeMachine = r.state
+        const endedGoal = (r.event as unknown as { goal: Goal }).goal
+        await saveGoal(endedGoal)
+      }
+    }
+
     if (m === 'companion') {
       const r = enterCompanion(this.modeMachine)
       if (r.ok) this.modeMachine = r.state
@@ -263,6 +283,10 @@ export class AppController {
       if (r.ok) {
         this.modeMachine = r.state
         await saveGoal(r.state.activeGoal!)
+        await this.log({
+          ts: Date.now(), type: 'goal_started', mode: this.modeMachine.mode,
+          goalId: r.state.activeGoal!.id, data: { goal: r.state.activeGoal },
+        })
       }
     }
     await this.persistRuntimeState()
@@ -290,6 +314,17 @@ export class AppController {
     this.detector = new SlackDetector(this.profiles, this.llm)
     this.triggerEngine.stopFallbackTimer()
     this.triggerEngine.startFallbackTimer(this.companionConfig.fallbackIntervalMinutes)
+    // 写回 config.json
+    const cfg = {
+      persona: this.persona,
+      llm: {
+        judge: { model: this.llmConfig.judgeModel, apiKey: this.llmConfig.judgeApiKey, apiBase: this.llmConfig.judgeApiBase },
+        generate: { model: this.llmConfig.generateModel, apiKey: this.llmConfig.generateApiKey, apiBase: this.llmConfig.generateApiBase },
+        summary: { model: this.llmConfig.summaryModel, apiKey: this.llmConfig.summaryApiKey, apiBase: this.llmConfig.summaryApiBase },
+      },
+      companion: this.companionConfig,
+    }
+    writeConfigFile(JSON.stringify(cfg, null, 2)).catch((e) => console.error('配置写入文件失败', e))
   }
 
   private pushUser(content: string) {
@@ -337,5 +372,62 @@ export class AppController {
     this.poller.stop()
     this.triggerEngine.stopFallbackTimer()
     this.scheduler.stop()
+  }
+
+  // ===== 调试方法 =====
+  async debugGetSnapshot(): Promise<{
+    mode: Mode
+    activeGoal: Goal | null
+    foregroundWindow: ForegroundWindow | null
+    idleMs: number
+    isIdle: boolean
+    slackCount: number
+    lastSpokeAt: number
+    cooldownUntil: number
+    profiles: { whitelisted: string[]; blacklisted: string[] }
+  }> {
+    const win = this.poller.getLastWindow()
+    const idleMs = await getIdleMs()
+    return {
+      mode: this.modeMachine.mode,
+      activeGoal: this.modeMachine.activeGoal,
+      foregroundWindow: win,
+      idleMs,
+      isIdle: this.idleState.isIdle,
+      slackCount: this.slackCount,
+      lastSpokeAt: this.lastSpokeAt,
+      cooldownUntil: this.cooldownUntil,
+      profiles: this.profiles.debugSnapshot(),
+    }
+  }
+
+  async debugDetectSlack(): Promise<{
+    foregroundWindow: ForegroundWindow | null
+    detection: { outcome: string; needsReminder: boolean; reason?: string } | null
+    goal: Goal | null
+    error?: string
+  }> {
+    const win = this.poller.getLastWindow()
+    const goal = this.modeMachine.activeGoal
+    if (!win) return { foregroundWindow: null, detection: null, goal, error: '未获取到前台窗口' }
+    if (!goal) return { foregroundWindow: win, detection: null, goal: null, error: '当前无活跃目标，无法检测摸鱼' }
+    try {
+      const detection = await this.detector.detect(win, goal)
+      return {
+        foregroundWindow: win,
+        detection: {
+          outcome: detection.outcome,
+          needsReminder: detection.needsReminder,
+          reason: (detection as unknown as { reason?: string }).reason,
+        },
+        goal,
+      }
+    } catch (e) {
+      return { foregroundWindow: win, detection: null, goal, error: String(e) }
+    }
+  }
+
+  async debugForcePoll(): Promise<ForegroundWindow | null> {
+    return this.poller.forcePoll()
   }
 }

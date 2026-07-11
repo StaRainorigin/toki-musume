@@ -41,7 +41,8 @@ export class LLMClient {
   async chatWithIntent(messages: LLMMessage[], tier: LLMModelTier = 'generate'): Promise<ChatLLMResponse> {
     const raw = await this.chat(messages, tier)
     try {
-      const parsed = JSON.parse(raw) as ChatLLMResponse
+      const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+      const parsed = JSON.parse(cleaned) as ChatLLMResponse
       return { reply: parsed.reply ?? raw, intent: parsed.intent ?? null }
     } catch {
       return { reply: raw, intent: null }

@@ -54,7 +54,15 @@ pub fn init_db(db_path: &Path) -> Result<Connection, rusqlite::Error> {
             last_spoke_at INTEGER
         );
 
+        CREATE TABLE IF NOT EXISTS app_config (
+            id INTEGER PRIMARY KEY CHECK(id = 1),
+            persona TEXT NOT NULL DEFAULT '{}',
+            llm_config TEXT NOT NULL DEFAULT '{}',
+            companion_config TEXT NOT NULL DEFAULT '{}'
+        );
+
         INSERT OR IGNORE INTO runtime_state (id, mode) VALUES (1, 'idle');
+        INSERT OR IGNORE INTO app_config (id) VALUES (1);
         ",
     )?;
     Ok(conn)

@@ -53,11 +53,15 @@ describe('mode-machine', () => {
     }
   })
 
-  it('有活跃目标不能进入陪伴', () => {
+  it('有活跃目标时进入陪伴会自动结束目标', () => {
     const r1 = startGoal(createInitialState(), 'study', 'React')
     if (!r1.ok) throw new Error('should succeed')
     const r = enterCompanion(r1.state)
-    expect(r.ok).toBe(false)
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.state.mode).toBe('companion')
+      expect(r.state.activeGoal).toBeNull()
+    }
   })
 
   it('无目标可进入陪伴', () => {

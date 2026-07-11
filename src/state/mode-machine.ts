@@ -93,10 +93,13 @@ export function enterCompanion(state: ModeMachineState): TransitionResult {
   if (state.mode === 'rest') {
     return { ok: false, reason: '休息中，无法进入陪伴' }
   }
-  if (state.activeGoal) {
-    return { ok: false, reason: '有活跃目标，无法进入陪伴' }
+  // 如果有活跃目标，先结束它
+  let s = state
+  if (s.activeGoal) {
+    const ended = endGoal(s)
+    if (ended.ok) s = ended.state
   }
-  const newState: ModeMachineState = { ...state, mode: 'companion' }
+  const newState: ModeMachineState = { ...s, mode: 'companion' }
   return { ok: true, state: newState, event: { type: 'mode_switch', from: state.mode, to: 'companion' } }
 }
 

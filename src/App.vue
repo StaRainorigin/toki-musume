@@ -6,6 +6,7 @@ import StatusBar from './components/StatusBar.vue'
 import TodaySummary from './components/TodaySummary.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import HistoryView from './components/HistoryView.vue'
+import DebugPanel from './components/DebugPanel.vue'
 import { AppController } from './controller'
 import type { Mode, Goal, PersonaConfig, LLMConfig, CompanionConfig } from './types'
 import { DEFAULT_PERSONA, DEFAULT_LLM_CONFIG, DEFAULT_COMPANION_CONFIG } from './config'
@@ -15,6 +16,7 @@ const activeGoal = ref<Goal | null>(null)
 const messages = ref<Array<{ role: 'user' | 'assistant' | 'system'; content: string; ts: number }>>([])
 const showSettings = ref(false)
 const showHistory = ref(false)
+const showDebug = ref(false)
 const persona = ref<PersonaConfig>({ ...DEFAULT_PERSONA })
 const llmConfig = ref<LLMConfig>({ ...DEFAULT_LLM_CONFIG })
 const companionConfig = ref<CompanionConfig>({ ...DEFAULT_COMPANION_CONFIG })
@@ -57,10 +59,6 @@ async function handleSwitchMode(m: 'companion' | 'study' | 'work' | 'rest') {
   await controller.switchMode(m)
 }
 
-async function handleEndGoal() {
-  await controller.endActiveGoal()
-}
-
 function handleSaveSettings(s: { persona: PersonaConfig; llmConfig: LLMConfig; companionConfig: CompanionConfig }) {
   persona.value = s.persona
   llmConfig.value = s.llmConfig
@@ -74,8 +72,13 @@ function handleSaveSettings(s: { persona: PersonaConfig; llmConfig: LLMConfig; c
   <div class="app">
     <header>
       <span class="char-name">{{ persona.characterName }}</span>
-      <button class="settings-btn" @click="showSettings = !showSettings">⚙</button>
+      <div class="header-btns">
+        <button class="settings-btn" @click="showDebug = !showDebug">🔧</button>
+        <button class="settings-btn" @click="showSettings = !showSettings">⚙</button>
+      </div>
     </header>
+
+    <DebugPanel v-if="showDebug" :controller="controller" @close="showDebug = false" />
 
     <SettingsPanel
       v-if="showSettings"
@@ -93,7 +96,6 @@ function handleSaveSettings(s: { persona: PersonaConfig; llmConfig: LLMConfig; c
       :mode="mode"
       :active-goal="activeGoal"
       @switch-mode="handleSwitchMode"
-      @end-goal="handleEndGoal"
     />
 
     <TodaySummary
@@ -112,5 +114,6 @@ function handleSaveSettings(s: { persona: PersonaConfig; llmConfig: LLMConfig; c
 .app { max-width: 600px; margin: 0 auto; padding: 16px; font-family: sans-serif; }
 header { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
 .char-name { font-size: 1.2em; font-weight: bold; }
+.header-btns { display: flex; gap: 8px; }
 .settings-btn { background: none; border: none; font-size: 1.2em; cursor: pointer; }
 </style>

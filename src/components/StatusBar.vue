@@ -8,7 +8,6 @@ defineProps<{
 
 const emit = defineEmits<{
   switchMode: [mode: 'companion' | 'study' | 'work' | 'rest']
-  endGoal: []
 }>()
 </script>
 
@@ -25,7 +24,6 @@ const emit = defineEmits<{
       <button @click="emit('switchMode', 'study')" :class="{ active: mode === 'study' }">学习</button>
       <button @click="emit('switchMode', 'work')" :class="{ active: mode === 'work' }">工作</button>
       <button @click="emit('switchMode', 'rest')" :class="{ active: mode === 'rest' }">休息</button>
-      <button v-if="activeGoal" @click="emit('endGoal')" class="end-btn">结束</button>
     </div>
   </div>
 </template>

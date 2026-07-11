@@ -8,14 +8,18 @@ vi.mock('../tauri-bridge', () => ({
   upsertAppProfile: vi.fn(),
   getLlmCache: vi.fn(),
   saveLlmCache: vi.fn(),
+  readConfigFile: vi.fn(),
+  writeConfigFile: vi.fn(),
+  openConfigDir: vi.fn(),
 }))
 
 import { recoverState } from './runtime-state'
-import { initDatabase, getRuntimeState, getActiveGoal, getAppProfiles } from '../tauri-bridge'
+import { initDatabase, getRuntimeState, getActiveGoal, getAppProfiles, readConfigFile } from '../tauri-bridge'
 
 describe('recoverState', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(readConfigFile).mockResolvedValue('{}')
   })
 
   it('正常恢复 idle 状态', async () => {

@@ -48,4 +48,13 @@ export class WindowPoller {
   getLastCheckAt(): number {
     return this.lastCheckAt
   }
+
+  async forcePoll(): Promise<ForegroundWindow | null> {
+    const win = await getForegroundWindow()
+    this.lastCheckAt = Date.now()
+    if (win) {
+      this.lastWindow = win
+    }
+    return win
+  }
 }

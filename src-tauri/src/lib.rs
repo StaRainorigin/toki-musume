@@ -44,10 +44,81 @@ fn append_log(_app: tauri::AppHandle, event: storage::LogEventInput) -> Result<(
 }
 
 #[tauri::command]
-fn read_logs(_app: tauri::AppHandle, start_date: String, end_date: String) -> Result<Vec<String>, String> {
+fn read_logs(_app: tauri::AppHandle, startDate: String, endDate: String) -> Result<Vec<String>, String> {
     let app_dir = get_app_data_dir()?;
     let logs_dir = app_dir.join("logs");
-    storage::read_log_events(&logs_dir, &start_date, &end_date)
+    storage::read_log_events(&logs_dir, &startDate, &endDate)
+}
+
+/// 读取 config.json，如果不存在则自动生成默认模板
+#[tauri::command]
+fn read_config_file() -> Result<String, String> {
+    let app_dir = get_app_data_dir()?;
+    std::fs::create_dir_all(&app_dir)
+        .map_err(|e| format!("无法创建目录: {}", e))?;
+    let config_path = app_dir.join("config.json");
+
+    if !config_path.exists() {
+        // 生成默认配置模板
+        let default_config = serde_json::json!({
+            "persona": {
+                "characterName": "时娘",
+                "appName": "toki-musume"
+            },
+            "llm": {
+                "judge": {
+                    "model": "gpt-4o-mini",
+                    "apiKey": "",
+                    "apiBase": "https://api.openai.com/v1"
+                },
+                "generate": {
+                    "model": "gpt-4o-mini",
+                    "apiKey": "",
+                    "apiBase": "https://api.openai.com/v1"
+                },
+                "summary": {
+                    "model": "gpt-4o",
+                    "apiKey": "",
+                    "apiBase": "https://api.openai.com/v1"
+                }
+            },
+            "companion": {
+                "enabled": true,
+                "frequency": "normal",
+                "cooldownMinutes": 10,
+                "triggerProbability": 0.3,
+                "fallbackIntervalMinutes": 30
+            }
+        });
+        let pretty = serde_json::to_string_pretty(&default_config)
+            .map_err(|e| format!("序列化失败: {}", e))?;
+        std::fs::write(&config_path, &pretty)
+            .map_err(|e| format!("写入配置文件失败: {}", e))?;
+        return Ok(pretty);
+    }
+
+    std::fs::read_to_string(&config_path)
+        .map_err(|e| format!("读取配置文件失败: {}", e))
+}
+
+/// 写入 config.json
+#[tauri::command]
+fn write_config_file(content: String) -> Result<(), String> {
+    let app_dir = get_app_data_dir()?;
+    std::fs::create_dir_all(&app_dir)
+        .map_err(|e| format!("无法创建目录: {}", e))?;
+    let config_path = app_dir.join("config.json");
+    std::fs::write(&config_path, &content)
+        .map_err(|e| format!("写入配置文件失败: {}", e))
+}
+
+/// 打开 config.json 所在目录
+#[tauri::command]
+fn open_config_dir() -> Result<String, String> {
+    let app_dir = get_app_data_dir()?;
+    let config_path = app_dir.join("config.json");
+    // 返回路径让前端显示
+    Ok(config_path.to_string_lossy().to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -84,6 +155,9 @@ pub fn run() {
             init_database,
             append_log,
             read_logs,
+            read_config_file,
+            write_config_file,
+            open_config_dir,
             commands::get_runtime_state,
             commands::save_runtime_state,
             commands::get_app_profiles,
@@ -97,6 +171,8 @@ pub fn run() {
             commands::list_daily_summaries,
             commands::save_weekly_summary,
             commands::show_notification,
+            commands::get_app_config,
+            commands::save_app_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -85,4 +85,16 @@ export class AppProfileStore {
   isLoaded(): boolean {
     return this.loaded
   }
+
+  debugSnapshot(): { whitelisted: string[]; blacklisted: string[] } {
+    const whitelisted: string[] = []
+    const blacklisted: string[] = []
+    for (const [, profiles] of this.cache) {
+      for (const [name, p] of profiles) {
+        if (p.list === 'whitelist') whitelisted.push(name)
+        else if (p.list === 'blacklist') blacklisted.push(name)
+      }
+    }
+    return { whitelisted, blacklisted }
+  }
 }

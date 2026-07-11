@@ -44,14 +44,14 @@ pub fn get_runtime_state(state: tauri::State<DbState>) -> Result<RuntimeStateRow
 pub fn save_runtime_state(
     state: tauri::State<DbState>,
     mode: String,
-    active_goal_id: Option<String>,
-    companion_cooldown_until: i64,
-    last_spoke_at: Option<i64>,
+    activeGoalId: Option<String>,
+    companionCooldownUntil: i64,
+    lastSpokeAt: Option<i64>,
 ) -> Result<(), String> {
     with_conn(&state, |conn| {
         conn.execute(
             "UPDATE runtime_state SET mode = ?, active_goal_id = ?, companion_cooldown_until = ?, last_spoke_at = ? WHERE id = 1",
-            rusqlite::params![mode, active_goal_id, companion_cooldown_until, last_spoke_at],
+            rusqlite::params![mode, activeGoalId, companionCooldownUntil, lastSpokeAt],
         )
         .map_err(|e| e.to_string())?;
         Ok(())
@@ -71,10 +71,10 @@ pub struct AppProfileRow {
 #[tauri::command]
 pub fn get_app_profiles(
     state: tauri::State<DbState>,
-    goal_topic: Option<String>,
+    goalTopic: Option<String>,
 ) -> Result<Vec<AppProfileRow>, String> {
     with_conn(&state, |conn| {
-        let (sql, params): (String, Vec<Box<dyn rusqlite::ToSql>>) = match &goal_topic {
+        let (sql, params): (String, Vec<Box<dyn rusqlite::ToSql>>) = match &goalTopic {
             Some(t) => (
                 "SELECT process_name, list, goal_topic, learned_at, pending_suggest FROM app_profiles WHERE goal_topic = ? OR goal_topic IS NULL".to_string(),
                 vec![Box::new(t.clone())],
@@ -107,11 +107,11 @@ pub fn get_app_profiles(
 #[tauri::command]
 pub fn upsert_app_profile(
     state: tauri::State<DbState>,
-    process_name: String,
+    processName: String,
     list: String,
-    goal_topic: Option<String>,
-    learned_at: Option<i64>,
-    pending_suggest: bool,
+    goalTopic: Option<String>,
+    learnedAt: Option<i64>,
+    pendingSuggest: bool,
 ) -> Result<(), String> {
     with_conn(&state, |conn| {
         conn.execute(
@@ -119,8 +119,8 @@ pub fn upsert_app_profile(
              VALUES (?, ?, ?, ?, ?)
              ON CONFLICT(process_name, goal_topic) DO UPDATE SET list = ?, learned_at = ?, pending_suggest = ?",
             rusqlite::params![
-                process_name, list, goal_topic, learned_at, pending_suggest as i32,
-                list, learned_at, pending_suggest as i32,
+                processName, list, goalTopic, learnedAt, pendingSuggest as i32,
+                list, learnedAt, pendingSuggest as i32,
             ],
         )
         .map_err(|e| e.to_string())?;
@@ -158,13 +158,13 @@ pub fn save_goal(state: tauri::State<DbState>, goal: GoalRow) -> Result<(), Stri
 }
 
 #[tauri::command]
-pub fn get_active_goal(state: tauri::State<DbState>, goal_id: String) -> Result<Option<GoalRow>, String> {
+pub fn get_active_goal(state: tauri::State<DbState>, goalId: String) -> Result<Option<GoalRow>, String> {
     with_conn(&state, |conn| {
         let mut stmt = conn
             .prepare("SELECT id, mode, topic, planned_minutes, started_at, ended_at, status FROM goals WHERE id = ?")
             .map_err(|e| e.to_string())?;
         let result = stmt
-            .query_row([&goal_id], |r| {
+            .query_row([&goalId], |r| {
                 Ok(GoalRow {
                     id: r.get(0)?,
                     mode: r.get(1)?,
@@ -193,15 +193,15 @@ pub struct LlmCacheRow {
 #[tauri::command]
 pub fn get_llm_cache(
     state: tauri::State<DbState>,
-    process_name: String,
-    goal_topic: String,
+    processName: String,
+    goalTopic: String,
 ) -> Result<Option<LlmCacheRow>, String> {
     with_conn(&state, |conn| {
         let mut stmt = conn
             .prepare("SELECT process_name, goal_topic, related, reason, judged_at FROM llm_cache WHERE process_name = ? AND goal_topic = ?")
             .map_err(|e| e.to_string())?;
         let result = stmt
-            .query_row([&process_name, &goal_topic], |r| {
+            .query_row([&processName, &goalTopic], |r| {
                 Ok(LlmCacheRow {
                     process_name: r.get(0)?,
                     goal_topic: r.get(1)?,
@@ -218,11 +218,11 @@ pub fn get_llm_cache(
 #[tauri::command]
 pub fn save_llm_cache(
     state: tauri::State<DbState>,
-    process_name: String,
-    goal_topic: String,
+    processName: String,
+    goalTopic: String,
     related: bool,
     reason: Option<String>,
-    judged_at: i64,
+    judgedAt: i64,
 ) -> Result<(), String> {
     with_conn(&state, |conn| {
         conn.execute(
@@ -230,8 +230,8 @@ pub fn save_llm_cache(
              VALUES (?, ?, ?, ?, ?)
              ON CONFLICT(process_name, goal_topic) DO UPDATE SET related = ?, reason = ?, judged_at = ?",
             rusqlite::params![
-                process_name, goal_topic, related as i32, reason, judged_at,
-                related as i32, reason, judged_at,
+                processName, goalTopic, related as i32, reason, judgedAt,
+                related as i32, reason, judgedAt,
             ],
         )
         .map_err(|e| e.to_string())?;
@@ -245,14 +245,14 @@ pub fn save_daily_summary(
     state: tauri::State<DbState>,
     date: String,
     data: String,
-    generated_at: i64,
+    generatedAt: i64,
 ) -> Result<(), String> {
     with_conn(&state, |conn| {
         conn.execute(
             "INSERT INTO daily_summaries (date, data, generated_at)
              VALUES (?, ?, ?)
              ON CONFLICT(date) DO UPDATE SET data = ?, generated_at = ?",
-            rusqlite::params![date, data, generated_at, data, generated_at],
+            rusqlite::params![date, data, generatedAt, data, generatedAt],
         )
         .map_err(|e| e.to_string())?;
         Ok(())
@@ -273,15 +273,15 @@ pub fn get_daily_summary(state: tauri::State<DbState>, date: String) -> Result<O
 #[tauri::command]
 pub fn list_daily_summaries(
     state: tauri::State<DbState>,
-    start_date: String,
-    end_date: String,
+    startDate: String,
+    endDate: String,
 ) -> Result<Vec<(String, String)>, String> {
     with_conn(&state, |conn| {
         let mut stmt = conn
             .prepare("SELECT date, data FROM daily_summaries WHERE date >= ? AND date <= ? ORDER BY date")
             .map_err(|e| e.to_string())?;
         let rows = stmt
-            .query_map([&start_date, &end_date], |r| {
+            .query_map([&startDate, &endDate], |r| {
                 Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
             })
             .map_err(|e| e.to_string())?;
@@ -296,16 +296,16 @@ pub fn list_daily_summaries(
 #[tauri::command]
 pub fn save_weekly_summary(
     state: tauri::State<DbState>,
-    week_start: String,
+    weekStart: String,
     data: String,
-    generated_at: i64,
+    generatedAt: i64,
 ) -> Result<(), String> {
     with_conn(&state, |conn| {
         conn.execute(
             "INSERT INTO weekly_summaries (week_start, data, generated_at)
              VALUES (?, ?, ?)
              ON CONFLICT(week_start) DO UPDATE SET data = ?, generated_at = ?",
-            rusqlite::params![week_start, data, generated_at, data, generated_at],
+            rusqlite::params![weekStart, data, generatedAt, data, generatedAt],
         )
         .map_err(|e| e.to_string())?;
         Ok(())
@@ -316,4 +316,48 @@ pub fn save_weekly_summary(
 #[tauri::command]
 pub fn show_notification(_title: String, _body: String) -> Result<(), String> {
     Ok(())
+}
+
+// ===== app_config =====
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AppConfigRow {
+    pub persona: String,
+    pub llm_config: String,
+    pub companion_config: String,
+}
+
+#[tauri::command]
+pub fn get_app_config(state: tauri::State<DbState>) -> Result<AppConfigRow, String> {
+    with_conn(&state, |conn| {
+        let mut stmt = conn
+            .prepare("SELECT persona, llm_config, companion_config FROM app_config WHERE id = 1")
+            .map_err(|e| e.to_string())?;
+        let row = stmt
+            .query_row([], |r| {
+                Ok(AppConfigRow {
+                    persona: r.get(0)?,
+                    llm_config: r.get(1)?,
+                    companion_config: r.get(2)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        Ok(row)
+    })
+}
+
+#[tauri::command]
+pub fn save_app_config(
+    state: tauri::State<DbState>,
+    persona: String,
+    llmConfig: String,
+    companionConfig: String,
+) -> Result<(), String> {
+    with_conn(&state, |conn| {
+        conn.execute(
+            "UPDATE app_config SET persona = ?, llm_config = ?, companion_config = ? WHERE id = 1",
+            rusqlite::params![persona, llmConfig, companionConfig],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    })
 }

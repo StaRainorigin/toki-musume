@@ -180,3 +180,16 @@ export async function showNotification(title: string, body: string): Promise<voi
     }
   }
 }
+
+// ===== 配置文件 =====
+export async function readConfigFile(): Promise<string> {
+  return invoke<string>('read_config_file')
+}
+
+export async function writeConfigFile(content: string): Promise<void> {
+  await invoke('write_config_file', { content })
+}
+
+export async function openConfigDir(): Promise<string> {
+  return invoke<string>('open_config_dir')
+}
