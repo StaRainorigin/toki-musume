@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { Icon } from '@iconify/vue'
 import { useController } from '../composables/useController'
 
 const emit = defineEmits<{ close: [] }>()
@@ -67,8 +68,8 @@ onUnmounted(() => {
 <template>
   <div class="debug-panel">
     <div class="panel-header">
-      <h3>🔧 调试面板</h3>
-      <button class="close-btn" @click="emit('close')">✕</button>
+      <h3><Icon icon="tabler:bug" width="18" /> 调试面板</h3>
+      <button class="close-btn" @click="emit('close')"><Icon icon="tabler:x" width="16" /></button>
     </div>
 
     <section>

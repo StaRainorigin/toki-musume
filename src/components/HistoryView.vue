@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { Icon } from '@iconify/vue'
 import { useController } from '../composables/useController'
 import type { DailySummary } from '../types'
 
@@ -36,7 +37,7 @@ function selectSummary(date: string) {
   <div class="history-view">
     <div class="panel-header">
       <h3>历史总结</h3>
-      <button class="close-btn" @click="emit('close')">✕</button>
+      <button class="close-btn" @click="emit('close')"><Icon icon="tabler:x" width="16" /></button>
     </div>
     <div v-if="summaries.length === 0" class="empty">暂无历史总结</div>
     <div v-else class="history-layout">
@@ -57,7 +58,7 @@ function selectSummary(date: string) {
         <h5>目标</h5>
         <ul>
           <li v-for="g in selected.goals" :key="g.topic">
-            {{ g.topic }} ({{ g.mode }}) - {{ g.completed ? '✓' : '✗' }} {{ g.minutes }}m
+            {{ g.topic }} ({{ g.mode }}) - <Icon :icon="g.completed ? 'tabler:check' : 'tabler:x'" width="14" :class="g.completed ? 'check-icon' : 'x-icon'" /> {{ g.minutes }}m
           </li>
         </ul>
         <p class="comment">{{ selected.comment }}</p>
@@ -78,4 +79,6 @@ function selectSummary(date: string) {
 .summary-detail { flex: 1; }
 .comment { margin-top: var(--spacing-md); padding: var(--spacing-md); background: var(--color-bg-secondary); border-radius: var(--radius-md); font-style: italic; color: var(--color-text-secondary); }
 .empty { color: var(--color-text-muted); padding: var(--spacing-lg); text-align: center; }
+.check-icon { color: var(--color-rest); }
+.x-icon { color: var(--color-danger); }
 </style>

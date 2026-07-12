@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { watch, nextTick, ref } from 'vue'
+import { Icon } from '@iconify/vue'
 import type { UIMessage } from '../controller'
 
 const props = defineProps<{
   messages: UIMessage[]
-  avatar: string
+  avatarIcon: string
 }>()
 
 const panelRef = ref<HTMLElement | null>(null)
@@ -29,7 +30,9 @@ watch(
 
       <!-- assistant 消息：头像 + 粉色气泡 + 左尾 -->
       <template v-else-if="msg.role === 'assistant'">
-        <div class="avatar-mini">{{ props.avatar }}</div>
+        <div class="avatar-mini">
+          <Icon :icon="props.avatarIcon" width="18" />
+        </div>
         <div class="bubble bubble-assistant">
           {{ msg.content }}
         </div>
@@ -56,7 +59,6 @@ watch(
   box-shadow: var(--shadow-sm);
 }
 
-/* 滚动条美化 */
 .chat-panel::-webkit-scrollbar { width: 6px; }
 .chat-panel::-webkit-scrollbar-track { background: transparent; }
 .chat-panel::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: var(--radius-pill); }
@@ -66,7 +68,6 @@ watch(
 .message.assistant { justify-content: flex-start; }
 .message.system { justify-content: center; }
 
-/* system 小胶囊 */
 .system-pill {
   background: var(--color-bg-secondary);
   color: var(--color-text-muted);
@@ -75,7 +76,6 @@ watch(
   border-radius: var(--radius-pill);
 }
 
-/* 头像 */
 .avatar-mini {
   width: 32px;
   height: 32px;
@@ -84,11 +84,10 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1em;
   flex-shrink: 0;
+  color: var(--color-accent);
 }
 
-/* 气泡基础 */
 .bubble {
   display: inline-block;
   padding: var(--spacing-sm) var(--spacing-md);
@@ -100,7 +99,6 @@ watch(
   position: relative;
 }
 
-/* assistant 气泡：粉色 + 左下尾 */
 .bubble-assistant {
   background: var(--color-accent-light);
   color: var(--color-text);
@@ -117,7 +115,6 @@ watch(
   border-bottom-left-radius: 50%;
 }
 
-/* user 气泡：绿色 + 右下尾 */
 .bubble-user {
   background: var(--color-rest-light);
   color: var(--color-text);

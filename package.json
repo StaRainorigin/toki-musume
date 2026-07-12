@@ -12,6 +12,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@iconify-json/material-symbols": "^1.2.83",
+    "@iconify-json/tabler": "^1.2.35",
+    "@iconify/vue": "^5.0.1",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-notification": "^2.3.3",
     "@tauri-apps/plugin-opener": "^2",

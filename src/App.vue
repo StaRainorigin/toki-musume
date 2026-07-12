@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { Icon } from '@iconify/vue'
 import ChatPanel from './components/ChatPanel.vue'
 import MessageInput from './components/MessageInput.vue'
 import StatusBar from './components/StatusBar.vue'
@@ -8,7 +9,8 @@ import SettingsPanel from './components/SettingsPanel.vue'
 import HistoryView from './components/HistoryView.vue'
 import DebugPanel from './components/DebugPanel.vue'
 import { useController } from './composables/useController'
-import type { Mode } from './types'
+import { useModeIcons } from './composables/useModeIcons'
+import { useTheme } from './composables/useTheme'
 
 const {
   mode, activeGoal, slackCount, messages,
@@ -16,30 +18,18 @@ const {
   init, sendMessage, switchMode, updateConfig, destroy,
 } = useController()
 
+const modeInfo = useModeIcons()
+const { themes, currentTheme, setTheme, initTheme } = useTheme()
+
 const showSettings = ref(false)
 const showHistory = ref(false)
 const showDebug = ref(false)
+const showThemePicker = ref(false)
 
-const modeEmoji: Record<Mode, string> = {
-  idle: '🌸',
-  companion: '💕',
-  study: '📖',
-  work: '💼',
-  rest: '☕',
-}
-
-const modeStatus: Record<Mode, string> = {
-  idle: '在等你呀～',
-  companion: '陪你聊天中',
-  study: '正在监督你学习～',
-  work: '一起加油工作！',
-  rest: '好好休息一下吧',
-}
-
-const avatarEmoji = computed(() => modeEmoji[mode.value])
-const statusText = computed(() => modeStatus[mode.value])
+const currentModeInfo = computed(() => modeInfo[mode.value])
 
 onMounted(async () => {
+  initTheme()
   try {
     const result = await init()
     if (result.needsGoalTimeoutPrompt) {
@@ -59,15 +49,38 @@ onUnmounted(() => {
   <div class="app" :class="`app--${mode}`">
     <header class="app-header">
       <div class="avatar-area">
-        <div class="avatar">{{ avatarEmoji }}</div>
+        <div class="avatar">
+          <Icon :icon="currentModeInfo.icon" width="28" />
+        </div>
         <div class="char-info">
           <span class="char-name">{{ persona.characterName }}</span>
-          <span class="char-status">{{ statusText }}</span>
+          <span class="char-status">{{ currentModeInfo.status }}</span>
         </div>
       </div>
       <div class="header-btns">
-        <button class="icon-btn" @click="showDebug = !showDebug" title="调试">🔧</button>
-        <button class="icon-btn" @click="showSettings = !showSettings" title="设置">⚙</button>
+        <!-- 主题切换 -->
+        <div class="theme-picker-wrapper">
+          <button class="icon-btn" @click="showThemePicker = !showThemePicker" title="主题">
+            <Icon icon="tabler:palette" width="20" />
+          </button>
+          <div v-if="showThemePicker" class="theme-picker">
+            <button
+              v-for="t in themes"
+              :key="t.name"
+              @click="setTheme(t.name); showThemePicker = false"
+              :class="['theme-option', { active: currentTheme === t.name }]"
+            >
+              <span class="theme-color-dot" :style="{ background: `var(--color-accent)` }" v-if="currentTheme === t.name"></span>
+              {{ t.label }}
+            </button>
+          </div>
+        </div>
+        <button class="icon-btn" @click="showDebug = !showDebug" title="调试">
+          <Icon icon="tabler:bug" width="20" />
+        </button>
+        <button class="icon-btn" @click="showSettings = !showSettings" title="设置">
+          <Icon icon="tabler:settings" width="20" />
+        </button>
       </div>
     </header>
 
@@ -82,7 +95,7 @@ onUnmounted(() => {
       @cancel="showSettings = false"
     />
 
-    <ChatPanel :messages="messages" :avatar="avatarEmoji" />
+    <ChatPanel :messages="messages" :avatar-icon="currentModeInfo.icon" />
 
     <MessageInput @send="sendMessage" />
 
@@ -108,22 +121,21 @@ onUnmounted(() => {
   padding: var(--spacing-lg);
   font-family: var(--font-family);
   min-height: 100vh;
-  background: linear-gradient(160deg, #fff9f5 0%, #fff0ee 50%, #ffeef5 100%);
+  background: linear-gradient(160deg, var(--color-bg) 0%, var(--color-bg-secondary) 50%, var(--color-bg-hover) 100%);
   transition: background 0.5s ease;
 }
 
-/* 模式主题渐变 */
 .app--study {
-  background: linear-gradient(160deg, #fff9f5 0%, #eef5fc 50%, #e8f0fc 100%);
+  background: linear-gradient(160deg, var(--color-bg) 0%, var(--color-study-light) 50%, var(--color-bg-hover) 100%);
 }
 .app--work {
-  background: linear-gradient(160deg, #fff9f5 0%, #fff5ef 50%, #ffece5 100%);
+  background: linear-gradient(160deg, var(--color-bg) 0%, var(--color-work-light) 50%, var(--color-bg-hover) 100%);
 }
 .app--rest {
-  background: linear-gradient(160deg, #fff9f5 0%, #eef9f3 50%, #e6f7ee 100%);
+  background: linear-gradient(160deg, var(--color-bg) 0%, var(--color-rest-light) 50%, var(--color-bg-hover) 100%);
 }
 .app--companion {
-  background: linear-gradient(160deg, #fff9f5 0%, #fff0f3 50%, #ffe6ec 100%);
+  background: linear-gradient(160deg, var(--color-bg) 0%, var(--color-accent-light) 50%, var(--color-bg-hover) 100%);
 }
 
 .app-header {
@@ -148,9 +160,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.6em;
   box-shadow: var(--shadow-sm);
   border: 2px solid var(--color-border-light);
+  color: var(--color-accent);
 }
 
 .char-info {
@@ -172,12 +184,12 @@ onUnmounted(() => {
 .header-btns {
   display: flex;
   gap: var(--spacing-sm);
+  position: relative;
 }
 
 .icon-btn {
   background: var(--color-bg-card);
   border: 1px solid var(--color-border-light);
-  font-size: 1.2em;
   cursor: pointer;
   width: 36px;
   height: 36px;
@@ -186,11 +198,50 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-sm);
+  color: var(--color-text-secondary);
   transition: all 0.2s;
 }
 
 .icon-btn:hover {
   transform: scale(1.1);
   box-shadow: var(--shadow-md);
+  color: var(--color-accent);
+}
+
+/* 主题选择器 */
+.theme-picker-wrapper { position: relative; }
+.theme-picker {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--spacing-xs);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.theme-option {
+  background: none;
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  white-space: nowrap;
+}
+.theme-option:hover { background: var(--color-bg-hover); }
+.theme-option.active { color: var(--color-accent); font-weight: bold; }
+.theme-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
 }
 </style>

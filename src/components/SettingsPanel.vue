@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { Icon } from '@iconify/vue'
 import type { PersonaConfig, LLMConfig, CompanionConfig } from '../types'
 
 const props = defineProps<{
@@ -29,23 +30,23 @@ function save() {
 <template>
   <div class="settings-panel">
     <div class="panel-header">
-      <h3>⚙️ 设置</h3>
-      <button class="close-btn" @click="emit('cancel')">✕</button>
+      <h3><Icon icon="tabler:settings" width="20" class="header-icon" /> 设置</h3>
+      <button class="close-btn" @click="emit('cancel')"><Icon icon="tabler:x" width="18" /></button>
     </div>
 
     <p class="hint">
-      💡 也可以直接编辑配置文件：<br/>
-      <code>%APPDATA%\toki-musume\config.json</code>
+      <Icon icon="tabler:bulb" width="16" class="hint-icon" />
+      也可以直接编辑配置文件：<code>%APPDATA%\toki-musume\config.json</code>
     </p>
 
     <section>
-      <h4>🎀 角色</h4>
+      <h4><Icon icon="tabler:bow" width="18" class="section-icon" /> 角色</h4>
       <label>角色名 <input v-model="localPersona.characterName" /></label>
       <label>软件名 <input v-model="localPersona.appName" /></label>
     </section>
 
     <section>
-      <h4>🤖 LLM 配置</h4>
+      <h4><Icon icon="tabler:robot" width="18" class="section-icon" /> LLM 配置</h4>
       <label>判断模型 <input v-model="localLLM.judgeModel" placeholder="deepseek-v4-flash" /></label>
       <label>API Key <input v-model="localLLM.judgeApiKey" type="password" /></label>
       <label>API Base <input v-model="localLLM.judgeApiBase" /></label>
@@ -58,7 +59,7 @@ function save() {
     </section>
 
     <section>
-      <h4>💕 陪伴</h4>
+      <h4><Icon icon="tabler:heart" width="18" class="section-icon" /> 陪伴</h4>
       <label class="checkbox-label">
         <input v-model="localCompanion.enabled" type="checkbox" />
         <span>启用陪伴</span>
@@ -66,9 +67,9 @@ function save() {
       <label>
         频率
         <select v-model="localCompanion.frequency">
-          <option value="quiet">🤫 安静</option>
-          <option value="normal">😊 普通</option>
-          <option value="chatty">💬 话痨</option>
+          <option value="quiet"><Icon icon="tabler:moon-stars" width="14" /> 安静</option>
+          <option value="normal"><Icon icon="tabler:mood-smile" width="14" /> 普通</option>
+          <option value="chatty"><Icon icon="tabler:message-circle" width="14" /> 话痨</option>
         </select>
       </label>
       <label>冷却(分钟) <input v-model.number="localCompanion.cooldownMinutes" type="number" /></label>
@@ -77,7 +78,9 @@ function save() {
     </section>
 
     <div class="panel-actions">
-      <button class="save-btn" @click="save">💾 保存</button>
+      <button class="save-btn" @click="save">
+        <Icon icon="tabler:device-floppy" width="18" /> 保存
+      </button>
       <button class="cancel-btn" @click="emit('cancel')">取消</button>
     </div>
   </div>
@@ -100,7 +103,8 @@ function save() {
   margin-bottom: var(--spacing-md);
 }
 
-.panel-header h3 { margin: 0; font-size: var(--font-lg); color: var(--color-text); }
+.panel-header h3 { margin: 0; font-size: var(--font-lg); color: var(--color-text); display: flex; align-items: center; gap: var(--spacing-xs); }
+.header-icon { color: var(--color-accent); }
 
 .close-btn {
   background: var(--color-bg-secondary);
@@ -108,14 +112,19 @@ function save() {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  font-size: 0.9em;
   cursor: pointer;
   color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.2s;
 }
 .close-btn:hover { background: var(--color-accent-light); color: var(--color-accent); }
 
 .hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
   font-size: var(--font-sm);
   color: var(--color-text-secondary);
   background: var(--color-bg-secondary);
@@ -123,10 +132,12 @@ function save() {
   border-radius: var(--radius-sm);
   margin-bottom: var(--spacing-md);
 }
+.hint-icon { color: var(--color-accent); flex-shrink: 0; margin-top: 2px; }
 .hint code { font-size: var(--font-sm); color: var(--color-accent); }
 
 section { margin-bottom: var(--spacing-lg); }
-h4 { margin-bottom: var(--spacing-sm); color: var(--color-text); }
+h4 { margin-bottom: var(--spacing-sm); color: var(--color-text); display: flex; align-items: center; gap: var(--spacing-xs); }
+.section-icon { color: var(--color-accent); }
 label { display: block; margin-bottom: var(--spacing-sm); font-size: var(--font-sm); color: var(--color-text-secondary); }
 input, select {
   width: 100%;
@@ -145,6 +156,9 @@ input[type="checkbox"] { width: auto; }
 
 .panel-actions { display: flex; gap: var(--spacing-sm); }
 .save-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
   padding: var(--spacing-sm) var(--spacing-lg);
   background: linear-gradient(135deg, var(--color-accent), var(--color-accent-hover));
   color: white;

@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { Icon } from '@iconify/vue'
 
 const emit = defineEmits<{ send: [text: string] }>()
 const text = ref('')
+
+const canSend = computed(() => text.value.trim().length > 0)
 
 function handleSend() {
   const t = text.value.trim()
@@ -25,8 +28,8 @@ function handleKeydown(e: KeyboardEvent) {
       @keydown="handleKeydown"
       placeholder="说点什么呀～"
     />
-    <button class="send-btn" @click="handleSend" :disabled="!text.trim()">
-      📮
+    <button class="send-btn" @click="handleSend" :disabled="!canSend">
+      <Icon icon="tabler:send-filled" width="18" />
     </button>
   </div>
 </template>
@@ -57,9 +60,7 @@ input:focus {
   box-shadow: 0 0 0 4px var(--color-accent-light);
 }
 
-input::placeholder {
-  color: var(--color-text-muted);
-}
+input::placeholder { color: var(--color-text-muted); }
 
 .send-btn {
   width: 40px;
@@ -67,13 +68,13 @@ input::placeholder {
   border: none;
   border-radius: 50%;
   background: var(--color-accent);
-  font-size: 1.1em;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
   flex-shrink: 0;
+  color: white;
 }
 
 .send-btn:hover:not(:disabled) {

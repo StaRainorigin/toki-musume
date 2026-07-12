@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { Icon } from '@iconify/vue'
 import type { Mode, Goal } from '../types'
 import { useNow } from '../composables/useNow'
+import { useModeIcons } from '../composables/useModeIcons'
 
 const props = defineProps<{
   mode: Mode
@@ -12,6 +14,7 @@ const emit = defineEmits<{
 }>()
 
 const now = useNow()
+const modeInfo = useModeIcons()
 
 const elapsedMinutes = () => {
   if (!props.activeGoal) return 0
@@ -19,17 +22,18 @@ const elapsedMinutes = () => {
 }
 
 const modes = [
-  { key: 'companion' as const, label: '陪伴', emoji: '💕', color: 'companion' },
-  { key: 'study' as const, label: '学习', emoji: '📖', color: 'study' },
-  { key: 'work' as const, label: '工作', emoji: '💼', color: 'work' },
-  { key: 'rest' as const, label: '休息', emoji: '☕', color: 'rest' },
+  { key: 'companion' as const },
+  { key: 'study' as const },
+  { key: 'work' as const },
+  { key: 'rest' as const },
 ]
 </script>
 
 <template>
   <div class="status-bar">
     <div class="status-info">
-      <span class="mode-label">✨ {{ mode }}</span>
+      <Icon icon="tabler:sparkles" width="14" class="sparkle-icon" />
+      <span class="mode-label">{{ modeInfo[mode].label }}</span>
       <span v-if="activeGoal" class="goal-label">
         · {{ activeGoal.topic }} {{ elapsedMinutes() }}m<template v-if="activeGoal.plannedMinutes">/{{ activeGoal.plannedMinutes }}m</template>
       </span>
@@ -39,10 +43,10 @@ const modes = [
         v-for="m in modes"
         :key="m.key"
         @click="emit('switchMode', m.key)"
-        :class="['mode-btn', `mode-btn--${m.color}`, { active: mode === m.key }]"
+        :class="['mode-btn', `mode-btn--${m.key}`, { active: mode === m.key }]"
       >
-        <span class="mode-emoji">{{ m.emoji }}</span>
-        <span class="mode-text">{{ m.label }}</span>
+        <Icon :icon="modeInfo[m.key].icon" width="18" class="mode-icon" />
+        <span class="mode-text">{{ modeInfo[m.key].label }}</span>
       </button>
     </div>
   </div>
@@ -60,15 +64,16 @@ const modes = [
 
 .status-info {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--spacing-xs);
   font-size: var(--font-sm);
 }
 
+.sparkle-icon { color: var(--color-accent); }
+
 .mode-label {
   font-weight: bold;
   color: var(--color-text);
-  text-transform: capitalize;
 }
 
 .goal-label {
@@ -83,7 +88,7 @@ const modes = [
 .mode-btn {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   padding: var(--spacing-xs) var(--spacing-sm);
   border: 2px solid var(--color-border);
   border-radius: var(--radius-pill);
@@ -94,32 +99,15 @@ const modes = [
   transition: all 0.25s ease;
 }
 
-.mode-emoji { font-size: 1.1em; }
+.mode-icon { flex-shrink: 0; }
 
 .mode-btn:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-sm);
 }
 
-/* 每种模式的 active 颜色 */
-.mode-btn--companion.active {
-  background: var(--color-companion);
-  border-color: var(--color-companion);
-  color: white;
-}
-.mode-btn--study.active {
-  background: var(--color-study);
-  border-color: var(--color-study);
-  color: white;
-}
-.mode-btn--work.active {
-  background: var(--color-work);
-  border-color: var(--color-work);
-  color: white;
-}
-.mode-btn--rest.active {
-  background: var(--color-rest);
-  border-color: var(--color-rest);
-  color: white;
-}
+.mode-btn--companion.active { background: var(--color-companion); border-color: var(--color-companion); color: white; }
+.mode-btn--study.active { background: var(--color-study); border-color: var(--color-study); color: white; }
+.mode-btn--work.active { background: var(--color-work); border-color: var(--color-work); color: white; }
+.mode-btn--rest.active { background: var(--color-rest); border-color: var(--color-rest); color: white; }
 </style>
