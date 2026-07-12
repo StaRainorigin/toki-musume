@@ -23,15 +23,66 @@ function handleKeydown(e: KeyboardEvent) {
     <input
       v-model="text"
       @keydown="handleKeydown"
-      placeholder="说点什么…"
+      placeholder="说点什么呀～"
     />
-    <button @click="handleSend">发送</button>
+    <button class="send-btn" @click="handleSend" :disabled="!text.trim()">
+      📮
+    </button>
   </div>
 </template>
 
 <style scoped>
-.message-input { display: flex; gap: var(--spacing-sm); padding: var(--spacing-sm) 0; }
-input { flex: 1; padding: var(--spacing-sm); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
-button { padding: var(--spacing-sm) var(--spacing-lg); background: var(--color-accent); color: white; border: none; border-radius: var(--radius-sm); cursor: pointer; }
-button:hover { background: var(--color-accent-hover); }
+.message-input {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) 0;
+  align-items: center;
+}
+
+input {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: 2px solid var(--color-border-light);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-card);
+  font-family: var(--font-family);
+  font-size: var(--font-md);
+  color: var(--color-text);
+  transition: all 0.2s;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 4px var(--color-accent-light);
+}
+
+input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.send-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-accent);
+  font-size: 1.1em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.send-btn:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  transform: scale(1.1) rotate(-10deg);
+}
+
+.send-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 </style>

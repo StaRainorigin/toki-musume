@@ -67,14 +67,15 @@ function selectSummary(date: string) {
 </template>
 
 <style scoped>
-.history-view { padding: var(--spacing-lg); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
-.panel-header { display: flex; justify-content: space-between; align-items: center; }
-.close-btn { background: none; border: none; font-size: 1.2em; cursor: pointer; color: var(--color-text-muted); }
+.history-view { padding: var(--spacing-lg); background: var(--color-bg-card); border: 1px solid var(--color-border-light); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md); }
+.close-btn { background: var(--color-bg-secondary); border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 0.9em; cursor: pointer; color: var(--color-text-muted); transition: all 0.2s; }
+.close-btn:hover { background: var(--color-accent-light); color: var(--color-accent); }
 .history-layout { display: flex; gap: var(--spacing-lg); }
 .date-list { list-style: none; padding: 0; min-width: 120px; cursor: pointer; }
-.date-list li { padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-sm); }
-.date-list li:hover { background: var(--color-bg-hover); }
+.date-list li { padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-pill); transition: all 0.2s; }
+.date-list li:hover { background: var(--color-accent-light); }
 .summary-detail { flex: 1; }
-.comment { margin-top: var(--spacing-md); padding: var(--spacing-sm); background: var(--color-bg-secondary); border-radius: var(--radius-sm); font-style: italic; }
-.empty { color: var(--color-text-muted); padding: var(--spacing-md); }
+.comment { margin-top: var(--spacing-md); padding: var(--spacing-md); background: var(--color-bg-secondary); border-radius: var(--radius-md); font-style: italic; color: var(--color-text-secondary); }
+.empty { color: var(--color-text-muted); padding: var(--spacing-lg); text-align: center; }
 </style>

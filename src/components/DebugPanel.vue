@@ -134,14 +134,15 @@ onUnmounted(() => {
   width: 420px;
   max-height: 80vh;
   overflow-y: auto;
-  background: var(--color-bg);
+  background: rgba(255, 249, 245, 0.92);
+  backdrop-filter: blur(12px);
   color: var(--color-text);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
   padding: var(--spacing-md);
   z-index: 1000;
   font-size: var(--font-sm);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg);
 }
 .panel-header { display: flex; justify-content: space-between; align-items: center; }
 .panel-header h3 { margin: 0; font-size: var(--font-md); }
