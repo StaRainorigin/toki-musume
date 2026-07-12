@@ -44,10 +44,10 @@ fn append_log(_app: tauri::AppHandle, event: storage::LogEventInput) -> Result<(
 }
 
 #[tauri::command]
-fn read_logs(_app: tauri::AppHandle, startDate: String, endDate: String) -> Result<Vec<String>, String> {
+fn read_logs(_app: tauri::AppHandle, start_date: String, end_date: String) -> Result<Vec<String>, String> {
     let app_dir = get_app_data_dir()?;
     let logs_dir = app_dir.join("logs");
-    storage::read_log_events(&logs_dir, &startDate, &endDate)
+    storage::read_log_events(&logs_dir, &start_date, &end_date)
 }
 
 /// 读取 config.json，如果不存在则自动生成默认模板

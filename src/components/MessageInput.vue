@@ -30,7 +30,8 @@ function handleKeydown(e: KeyboardEvent) {
 </template>
 
 <style scoped>
-.message-input { display: flex; gap: 8px; padding: 8px 0; }
-input { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-button { padding: 8px 16px; background: #4a90d9; color: white; border: none; border-radius: 4px; cursor: pointer; }
+.message-input { display: flex; gap: var(--spacing-sm); padding: var(--spacing-sm) 0; }
+input { flex: 1; padding: var(--spacing-sm); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+button { padding: var(--spacing-sm) var(--spacing-lg); background: var(--color-accent); color: white; border: none; border-radius: var(--radius-sm); cursor: pointer; }
+button:hover { background: var(--color-accent-hover); }
 </style>

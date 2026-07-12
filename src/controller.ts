@@ -21,19 +21,18 @@ import { CompanionTriggerEngine, type CompanionEvent } from './companion/trigger
 import { arbitrate, generateCompanionMessage, computeNewCooldown } from './companion/arbiter'
 import { LLMClient } from './llm/client'
 import { buildSystemPrompt, buildChatPrompt } from './llm/prompts'
-import { appendLog, saveRuntimeState, saveGoal, getIdleMs, writeConfigFile } from './tauri-bridge'
+import { appendLog, saveRuntimeState, saveGoal, getIdleMs, writeConfigFile, listDailySummaries } from './tauri-bridge'
 import { recoverState } from './recovery/runtime-state'
 import { generateDailySummary } from './summary/daily'
 import { SummaryScheduler } from './scheduler'
+import type { DailySummary } from './types'
 
 export type UIMessage = { role: 'user' | 'assistant' | 'system'; content: string; ts: number }
 
 export type ControllerState = {
   mode: Mode
   activeGoal: Goal | null
-  messages: UIMessage[]
   slackCount: number
-  workMinutes: number
 }
 
 export class AppController {
@@ -46,9 +45,9 @@ export class AppController {
   private triggerEngine!: CompanionTriggerEngine
   private llm!: LLMClient
   private scheduler!: SummaryScheduler
-  private persona: PersonaConfig = { ...DEFAULT_PERSONA }
-  private llmConfig: LLMConfig = { ...DEFAULT_LLM_CONFIG }
-  private companionConfig: CompanionConfig = { ...DEFAULT_COMPANION_CONFIG }
+  persona: PersonaConfig = { ...DEFAULT_PERSONA }
+  llmConfig: LLMConfig = { ...DEFAULT_LLM_CONFIG }
+  companionConfig: CompanionConfig = { ...DEFAULT_COMPANION_CONFIG }
   private lastSpokeAt = 0
   private cooldownUntil = 0
   private chatHistory: Array<{ role: 'user' | 'assistant'; content: string }> = []
@@ -341,9 +340,7 @@ export class AppController {
     this.onStateChange?.({
       mode: this.modeMachine.mode,
       activeGoal: this.modeMachine.activeGoal,
-      messages: [],
       slackCount: this.slackCount,
-      workMinutes: 0,
     })
   }
 
@@ -429,5 +426,10 @@ export class AppController {
 
   async debugForcePoll(): Promise<ForegroundWindow | null> {
     return this.poller.forcePoll()
+  }
+
+  async listHistory(startDate: string, endDate: string): Promise<Array<{ date: string; data: DailySummary }>> {
+    const rows = await listDailySummaries(startDate, endDate)
+    return rows.map((r) => ({ date: r.date, data: JSON.parse(r.data) as DailySummary }))
   }
 }

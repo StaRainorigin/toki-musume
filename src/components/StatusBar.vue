@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { Mode, Goal } from '../types'
+import { useNow } from '../composables/useNow'
 
-defineProps<{
+const props = defineProps<{
   mode: Mode
   activeGoal: Goal | null
 }>()
@@ -9,6 +10,13 @@ defineProps<{
 const emit = defineEmits<{
   switchMode: [mode: 'companion' | 'study' | 'work' | 'rest']
 }>()
+
+const now = useNow()
+
+const elapsedMinutes = () => {
+  if (!props.activeGoal) return 0
+  return Math.floor((now.value - props.activeGoal.startedAt) / 60000)
+}
 </script>
 
 <template>
@@ -16,7 +24,7 @@ const emit = defineEmits<{
     <span class="mode-label">模式: {{ mode }}</span>
     <span v-if="activeGoal" class="goal-label">
       | 目标: {{ activeGoal.topic }}
-      ({{ Math.floor((Date.now() - activeGoal.startedAt) / 60000) }}m
+      ({{ elapsedMinutes() }}m
       <template v-if="activeGoal.plannedMinutes">/ {{ activeGoal.plannedMinutes }}m</template>)
     </span>
     <div class="mode-buttons">
@@ -29,11 +37,10 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-.status-bar { display: flex; align-items: center; gap: 12px; padding: 8px; border-top: 1px solid #ddd; flex-wrap: wrap; }
+.status-bar { display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-sm); border-top: 1px solid var(--color-border); flex-wrap: wrap; }
 .mode-label { font-weight: bold; }
-.goal-label { color: #666; }
-.mode-buttons { margin-left: auto; display: flex; gap: 4px; }
-button { padding: 4px 12px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; background: white; }
-button.active { background: #4a90d9; color: white; }
-.end-btn { color: #d94a4a; }
+.goal-label { color: var(--color-text-secondary); }
+.mode-buttons { margin-left: auto; display: flex; gap: var(--spacing-xs); }
+button { padding: var(--spacing-xs) var(--spacing-md); border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer; background: var(--color-bg); }
+button.active { background: var(--color-accent); color: white; }
 </style>

@@ -1,34 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import type { ForegroundWindow, Goal, Mode } from '../types'
-
-const props = defineProps<{
-  controller: {
-    debugGetSnapshot: () => Promise<{
-      mode: Mode
-      activeGoal: Goal | null
-      foregroundWindow: ForegroundWindow | null
-      idleMs: number
-      isIdle: boolean
-      slackCount: number
-      lastSpokeAt: number
-      cooldownUntil: number
-      profiles: { whitelisted: string[]; blacklisted: string[] }
-    }>
-    debugDetectSlack: () => Promise<{
-      foregroundWindow: ForegroundWindow | null
-      detection: { outcome: string; needsReminder: boolean; reason?: string } | null
-      goal: Goal | null
-      error?: string
-    }>
-    debugForcePoll: () => Promise<ForegroundWindow | null>
-  }
-}>()
+import { useController } from '../composables/useController'
 
 const emit = defineEmits<{ close: [] }>()
 
-const snapshot = ref<Awaited<ReturnType<typeof props.controller.debugGetSnapshot>> | null>(null)
-const detectResult = ref<Awaited<ReturnType<typeof props.controller.debugDetectSlack>> | null>(null)
+const { controller } = useController()
+
+const snapshot = ref<Awaited<ReturnType<typeof controller.debugGetSnapshot>> | null>(null)
+const detectResult = ref<Awaited<ReturnType<typeof controller.debugDetectSlack>> | null>(null)
 const loading = ref(false)
 const detectLoading = ref(false)
 let timerId: number | null = null
@@ -36,7 +15,7 @@ let timerId: number | null = null
 async function refresh() {
   loading.value = true
   try {
-    snapshot.value = await props.controller.debugGetSnapshot()
+    snapshot.value = await controller.debugGetSnapshot()
   } catch (e) {
     console.error('debug snapshot failed', e)
   }
@@ -46,8 +25,8 @@ async function refresh() {
 async function forcePoll() {
   loading.value = true
   try {
-    await props.controller.debugForcePoll()
-    snapshot.value = await props.controller.debugGetSnapshot()
+    await controller.debugForcePoll()
+    snapshot.value = await controller.debugGetSnapshot()
   } catch (e) {
     console.error('force poll failed', e)
   }
@@ -57,7 +36,7 @@ async function forcePoll() {
 async function detectSlack() {
   detectLoading.value = true
   try {
-    detectResult.value = await props.controller.debugDetectSlack()
+    detectResult.value = await controller.debugDetectSlack()
   } catch (e) {
     console.error('detect failed', e)
   }
@@ -87,15 +66,17 @@ onUnmounted(() => {
 
 <template>
   <div class="debug-panel">
-    <div class="debug-header">
+    <div class="panel-header">
       <h3>🔧 调试面板</h3>
       <button class="close-btn" @click="emit('close')">✕</button>
     </div>
 
-    <!-- 状态快照 -->
     <section>
-      <h4>当前状态 <button @click="refresh" :disabled="loading" class="mini-btn">刷新</button>
-      <button @click="forcePoll" :disabled="loading" class="mini-btn">强制轮询</button></h4>
+      <h4>当前状态</h4>
+      <div class="section-actions">
+        <button @click="refresh" :disabled="loading" class="mini-btn">刷新</button>
+        <button @click="forcePoll" :disabled="loading" class="mini-btn">强制轮询</button>
+      </div>
       <div v-if="snapshot" class="info-grid">
         <div><span class="label">模式:</span> {{ snapshot.mode }}</div>
         <div><span class="label">目标:</span> {{ snapshot.activeGoal ? `${snapshot.activeGoal.topic} (${snapshot.activeGoal.mode})` : '无' }}</div>
@@ -121,7 +102,6 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <!-- 摸鱼检测 -->
     <section>
       <h4>摸鱼检测 <button @click="detectSlack" :disabled="detectLoading" class="mini-btn">手动检测</button></h4>
       <div v-if="detectLoading" class="loading">检测中...</div>
@@ -150,34 +130,36 @@ onUnmounted(() => {
 .debug-panel {
   position: fixed;
   top: 50px;
-  right: 16px;
+  right: var(--spacing-lg);
   width: 420px;
   max-height: 80vh;
   overflow-y: auto;
-  background: #1e1e1e;
-  color: #d4d4d4;
-  border: 1px solid #555;
-  border-radius: 8px;
-  padding: 12px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
   z-index: 1000;
-  font-size: 0.85em;
+  font-size: var(--font-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
-.debug-header { display: flex; justify-content: space-between; align-items: center; }
-.debug-header h3 { margin: 0; font-size: 1em; }
-.close-btn { background: none; border: none; color: #999; cursor: pointer; font-size: 1em; }
-section { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #333; }
-h4 { margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.panel-header { display: flex; justify-content: space-between; align-items: center; }
+.panel-header h3 { margin: 0; font-size: var(--font-md); }
+.close-btn { background: none; border: none; color: var(--color-text-muted); cursor: pointer; font-size: 1.2em; }
+section { margin-bottom: var(--spacing-md); padding-bottom: var(--spacing-sm); border-bottom: 1px solid var(--color-border); }
+h4 { margin-bottom: var(--spacing-xs); display: flex; align-items: center; gap: var(--spacing-sm); }
+.section-actions { margin-bottom: var(--spacing-xs); display: flex; gap: var(--spacing-xs); }
 .info-grid { display: grid; grid-template-columns: 1fr; gap: 2px; }
 .info-grid div { padding: 2px 0; }
-.label { color: #888; }
-.text-red { color: #f44; font-weight: bold; }
+.label { color: var(--color-text-secondary); }
+.text-red { color: var(--color-danger); font-weight: bold; }
 .text-green { color: #4f4; font-weight: bold; }
-.mini-btn { font-size: 0.85em; padding: 2px 8px; background: #333; color: #ccc; border: 1px solid #555; border-radius: 3px; cursor: pointer; }
+.mini-btn { font-size: var(--font-sm); padding: 2px var(--spacing-sm); background: var(--color-bg-secondary); color: var(--color-text-secondary); border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer; }
 .mini-btn:disabled { opacity: 0.5; }
-.profiles { margin-top: 6px; }
-.profile-list { margin-bottom: 4px; }
-.profile-items { color: #aaa; }
-.loading, .hint { color: #888; font-style: italic; }
-.error { color: #f44; }
+.profiles { margin-top: var(--spacing-xs); }
+.profile-list { margin-bottom: var(--spacing-xs); }
+.profile-items { color: var(--color-text-muted); }
+.loading, .hint { color: var(--color-text-muted); font-style: italic; }
+.error { color: var(--color-danger); }
 .detect-result div { padding: 2px 0; }
 </style>
