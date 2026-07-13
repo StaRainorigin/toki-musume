@@ -3,6 +3,7 @@ import { AppProfileStore } from './app-profiles'
 import { LLMClient } from '../llm/client'
 import { buildSlackJudgePrompt } from '../llm/prompts'
 import { DEFAULTS } from '../config'
+import { classifyWindow } from './categories'
 
 export type SlackJudgeOutcome = 'working' | 'slacking' | 'unknown'
 
@@ -24,8 +25,8 @@ export class SlackDetector {
   ) {}
 
   async detect(win: ForegroundWindow, goal: Goal): Promise<DetectionResult> {
+    // 1. 先查黑白名单
     const listKind = this.profiles.lookup(win.processName, goal.topic)
-
     if (listKind === 'whitelist') {
       return { outcome: 'working', processName: win.processName, windowTitle: win.windowTitle, needsReminder: false, reason: '白名单' }
     }
@@ -33,6 +34,34 @@ export class SlackDetector {
       return { outcome: 'slacking', processName: win.processName, windowTitle: win.windowTitle, needsReminder: true, reason: '黑名单' }
     }
 
+    // 2. 再查分类表（正则匹配，快速判断）
+    const category = classifyWindow(win.processName, win.windowTitle)
+    if (category) {
+      if (category.slackingWeight > 0) {
+        // 自动加入黑名单
+        await this.profiles.addToList(win.processName, 'blacklist', goal.topic, true)
+        return {
+          outcome: 'slacking',
+          processName: win.processName,
+          windowTitle: win.windowTitle,
+          needsReminder: true,
+          reason: `${category.name}（分类匹配）`,
+        }
+      } else if (category.slackingWeight < 0) {
+        // 自动加入白名单
+        await this.profiles.addToList(win.processName, 'whitelist', goal.topic, true)
+        return {
+          outcome: 'working',
+          processName: win.processName,
+          windowTitle: win.windowTitle,
+          needsReminder: false,
+          reason: `${category.name}（分类匹配）`,
+        }
+      }
+      // weight === 0（如浏览器、通讯工具）继续走 LLM 判断
+    }
+
+    // 3. 最后走 LLM fallback
     const judgeResult = await this.llmFallbackJudge(win, goal)
     if (judgeResult === null) {
       return { outcome: 'unknown', processName: win.processName, windowTitle: win.windowTitle, needsReminder: false, reason: 'LLM 未配置或冷却中' }

@@ -404,7 +404,8 @@ export class AppController {
     goal: Goal | null
     error?: string
   }> {
-    const win = this.poller.getLastWindow()
+    // 先强制轮询获取当前窗口
+    const win = await this.poller.forcePoll()
     const goal = this.modeMachine.activeGoal
     if (!win) return { foregroundWindow: null, detection: null, goal, error: '未获取到前台窗口' }
     if (!goal) return { foregroundWindow: win, detection: null, goal: null, error: '当前无活跃目标，无法检测摸鱼' }
@@ -415,7 +416,7 @@ export class AppController {
         detection: {
           outcome: detection.outcome,
           needsReminder: detection.needsReminder,
-          reason: (detection as unknown as { reason?: string }).reason,
+          reason: detection.reason,
         },
         goal,
       }
