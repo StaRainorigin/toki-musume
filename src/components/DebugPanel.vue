@@ -11,7 +11,9 @@ const snapshot = ref<Awaited<ReturnType<typeof controller.debugGetSnapshot>> | n
 const detectResult = ref<Awaited<ReturnType<typeof controller.debugDetectSlack>> | null>(null)
 const loading = ref(false)
 const detectLoading = ref(false)
+const delayedCountdown = ref(0)
 let timerId: number | null = null
+let countdownId: number | null = null
 
 async function refresh() {
   loading.value = true
@@ -44,6 +46,18 @@ async function detectSlack() {
   detectLoading.value = false
 }
 
+// 延迟检测：倒计时3秒后检测，让你有时间切到别的窗口
+async function delayedDetect() {
+  delayedCountdown.value = 3
+  countdownId = window.setInterval(() => {
+    delayedCountdown.value--
+    if (delayedCountdown.value <= 0) {
+      if (countdownId !== null) { clearInterval(countdownId); countdownId = null }
+      detectSlack()
+    }
+  }, 1000)
+}
+
 function fmtIdle(ms: number): string {
   const sec = Math.floor(ms / 1000)
   if (sec < 60) return `${sec}s`
@@ -62,6 +76,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (timerId !== null) clearInterval(timerId)
+  if (countdownId !== null) clearInterval(countdownId)
 })
 </script>
 
@@ -104,7 +119,16 @@ onUnmounted(() => {
     </section>
 
     <section>
-      <h4>摸鱼检测 <button @click="detectSlack" :disabled="detectLoading" class="mini-btn">手动检测</button></h4>
+      <h4>摸鱼检测</h4>
+      <div class="section-actions">
+        <button @click="detectSlack" :disabled="detectLoading || delayedCountdown > 0" class="mini-btn">
+          <Icon icon="tabler:hand-tap" width="14" /> 立即检测
+        </button>
+        <button @click="delayedDetect" :disabled="detectLoading || delayedCountdown > 0" class="mini-btn">
+          <Icon icon="tabler:timer" width="14" /> 延迟3秒检测
+        </button>
+        <span v-if="delayedCountdown > 0" class="countdown">{{ delayedCountdown }}秒后检测，快切窗口！</span>
+      </div>
       <div v-if="detectLoading" class="loading">检测中...</div>
       <div v-else-if="detectResult" class="detect-result">
         <div v-if="detectResult.error" class="error">{{ detectResult.error }}</div>
@@ -150,7 +174,9 @@ onUnmounted(() => {
 .close-btn { background: none; border: none; color: var(--color-text-muted); cursor: pointer; font-size: 1.2em; }
 section { margin-bottom: var(--spacing-md); padding-bottom: var(--spacing-sm); border-bottom: 1px solid var(--color-border); }
 h4 { margin-bottom: var(--spacing-xs); display: flex; align-items: center; gap: var(--spacing-sm); }
-.section-actions { margin-bottom: var(--spacing-xs); display: flex; gap: var(--spacing-xs); }
+.section-actions { margin-bottom: var(--spacing-xs); display: flex; gap: var(--spacing-xs); align-items: center; }
+.countdown { color: var(--color-accent); font-weight: bold; font-size: var(--font-sm); animation: pulse 1s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 .info-grid { display: grid; grid-template-columns: 1fr; gap: 2px; }
 .info-grid div { padding: 2px 0; }
 .label { color: var(--color-text-secondary); }

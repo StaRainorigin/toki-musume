@@ -2,7 +2,7 @@ import type { CompanionConfig, CompanionFrequency, LLMConfig, PersonaConfig } fr
 
 // ===== 默认参数（spec 6.7 节）=====
 export const DEFAULTS = {
-  pollIntervalSec: 5,
+  pollIntervalSec: 2,
   idleThresholdMin: 5,
   slackLevel1Sec: 30,
   slackLevel2Min: 3,

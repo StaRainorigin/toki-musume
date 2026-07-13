@@ -22,9 +22,9 @@ export async function appendLog(event: LogEvent): Promise<void> {
       ts: event.ts,
       type: event.type,
       mode: event.mode,
-      goal_id: event.goalId,
-      process_name: event.processName,
-      window_title: event.windowTitle,
+      goalId: event.goalId,
+      processName: event.processName,
+      windowTitle: event.windowTitle,
       note: event.note,
       data: event.data,
     },
@@ -40,15 +40,15 @@ export async function readLogs(startDate: string, endDate: string): Promise<LogE
 export async function getRuntimeState(): Promise<RuntimeState> {
   const row = await invoke<{
     mode: string
-    active_goal_id: string | null
-    companion_cooldown_until: number
-    last_spoke_at: number | null
+    activeGoalId: string | null
+    companionCooldownUntil: number
+    lastSpokeAt: number | null
   }>('get_runtime_state')
   return {
     mode: row.mode as RuntimeState['mode'],
-    activeGoalId: row.active_goal_id ?? undefined,
-    companionCooldownUntil: row.companion_cooldown_until,
-    lastSpokeAt: row.last_spoke_at ?? undefined,
+    activeGoalId: row.activeGoalId ?? undefined,
+    companionCooldownUntil: row.companionCooldownUntil,
+    lastSpokeAt: row.lastSpokeAt ?? undefined,
   }
 }
 
@@ -64,18 +64,18 @@ export async function saveRuntimeState(state: RuntimeState): Promise<void> {
 // ===== app_profiles =====
 export async function getAppProfiles(goalTopic?: string): Promise<AppProfile[]> {
   const rows = await invoke<Array<{
-    process_name: string
+    processName: string
     list: string
-    goal_topic: string | null
-    learned_at: number | null
-    pending_suggest: boolean
+    goalTopic: string | null
+    learnedAt: number | null
+    pendingSuggest: boolean
   }>>('get_app_profiles', { goal_topic: goalTopic ?? null })
   return rows.map((r) => ({
-    processName: r.process_name,
+    processName: r.processName,
     list: r.list as AppProfile['list'],
-    goalTopic: r.goal_topic ?? undefined,
-    learnedAt: r.learned_at ?? undefined,
-    pendingSuggest: r.pending_suggest,
+    goalTopic: r.goalTopic ?? undefined,
+    learnedAt: r.learnedAt ?? undefined,
+    pendingSuggest: r.pendingSuggest,
   }))
 }
 
@@ -96,9 +96,9 @@ export async function saveGoal(goal: Goal): Promise<void> {
       id: goal.id,
       mode: goal.mode,
       topic: goal.topic,
-      planned_minutes: goal.plannedMinutes ?? null,
-      started_at: goal.startedAt,
-      ended_at: goal.endedAt ?? null,
+      plannedMinutes: goal.plannedMinutes ?? null,
+      startedAt: goal.startedAt,
+      endedAt: goal.endedAt ?? null,
       status: goal.status,
     },
   })
@@ -109,9 +109,9 @@ export async function getActiveGoal(goalId: string): Promise<Goal | null> {
     id: string
     mode: string
     topic: string
-    planned_minutes: number | null
-    started_at: number
-    ended_at: number | null
+    plannedMinutes: number | null
+    startedAt: number
+    endedAt: number | null
     status: string
   } | null>('get_active_goal', { goal_id: goalId })
   if (!row) return null
@@ -119,9 +119,9 @@ export async function getActiveGoal(goalId: string): Promise<Goal | null> {
     id: row.id,
     mode: row.mode as Goal['mode'],
     topic: row.topic,
-    plannedMinutes: row.planned_minutes ?? undefined,
-    startedAt: row.started_at,
-    endedAt: row.ended_at ?? undefined,
+    plannedMinutes: row.plannedMinutes ?? undefined,
+    startedAt: row.startedAt,
+    endedAt: row.endedAt ?? undefined,
     status: row.status as Goal['status'],
   }
 }
@@ -131,7 +131,7 @@ export async function getLlmCache(processName: string, goalTopic: string): Promi
   const row = await invoke<{
     related: boolean
     reason: string | null
-    judged_at: number
+    judgedAt: number
   } | null>('get_llm_cache', {
     query: { process_name: processName, goal_topic: goalTopic },
   })

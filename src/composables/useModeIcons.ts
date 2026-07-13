@@ -31,7 +31,7 @@ const modeInfo: Record<Mode, ModeInfo> = {
     lightVar: '--color-study-light',
   },
   work: {
-    icon: 'material-symbols:work-rounded',
+    icon: 'tabler:briefcase',
     label: '工作',
     status: '一起加油工作！',
     colorVar: '--color-work',

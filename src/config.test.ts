@@ -8,8 +8,8 @@ import {
 } from './config'
 
 describe('config', () => {
-  it('默认轮询间隔 5 秒', () => {
-    expect(DEFAULTS.pollIntervalSec).toBe(5)
+  it('默认轮询间隔 2 秒', () => {
+    expect(DEFAULTS.pollIntervalSec).toBe(2)
   })
 
   it('分级阈值正确', () => {

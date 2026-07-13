@@ -13,6 +13,7 @@ where
 
 // ===== runtime_state =====
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RuntimeStateRow {
     pub mode: String,
     pub active_goal_id: Option<String>,
@@ -60,6 +61,7 @@ pub fn save_runtime_state(
 
 // ===== app_profiles =====
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AppProfileRow {
     pub process_name: String,
     pub list: String,
@@ -130,6 +132,7 @@ pub fn upsert_app_profile(
 
 // ===== goals =====
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GoalRow {
     pub id: String,
     pub mode: String,
@@ -182,6 +185,7 @@ pub fn get_active_goal(state: tauri::State<DbState>, goal_id: String) -> Result<
 
 // ===== llm_cache =====
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LlmCacheRow {
     pub process_name: String,
     pub goal_topic: String,
@@ -330,6 +334,7 @@ pub fn show_notification(_title: String, _body: String) -> Result<(), String> {
 
 // ===== app_config =====
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AppConfigRow {
     pub persona: String,
     pub llm_config: String,

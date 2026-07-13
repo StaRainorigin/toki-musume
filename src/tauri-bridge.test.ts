@@ -26,7 +26,7 @@ describe('tauri-bridge', () => {
     expect(invoke).toHaveBeenCalledWith('get_idle_ms')
   })
 
-  it('appendLog 转换字段名为 snake_case', async () => {
+  it('appendLog 传 camelCase 字段名', async () => {
     vi.mocked(invoke).mockResolvedValue(undefined)
     await appendLog({
       ts: 1000,
@@ -40,9 +40,9 @@ describe('tauri-bridge', () => {
         ts: 1000,
         type: 'window_switch',
         mode: 'study',
-        goal_id: undefined,
-        process_name: 'Code.exe',
-        window_title: 'main.ts',
+        goalId: undefined,
+        processName: 'Code.exe',
+        windowTitle: 'main.ts',
         note: undefined,
         data: undefined,
       },

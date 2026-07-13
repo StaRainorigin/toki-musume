@@ -5,6 +5,7 @@ use windows::Win32::System::SystemInformation::GetTickCount64;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ForegroundWindowInfo {
     pub process_name: String,
     pub window_title: String,
