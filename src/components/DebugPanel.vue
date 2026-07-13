@@ -182,7 +182,7 @@ h4 { margin-bottom: var(--spacing-xs); display: flex; align-items: center; gap: 
 .label { color: var(--color-text-secondary); }
 .text-red { color: var(--color-danger); font-weight: bold; }
 .text-green { color: #4f4; font-weight: bold; }
-.mini-btn { font-size: var(--font-sm); padding: 2px var(--spacing-sm); background: var(--color-bg-secondary); color: var(--color-text-secondary); border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer; }
+.mini-btn { display: inline-flex; align-items: center; gap: 4px; font-size: var(--font-sm); padding: 2px var(--spacing-sm); background: var(--color-bg-secondary); color: var(--color-text-secondary); border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer; }
 .mini-btn:disabled { opacity: 0.5; }
 .profiles { margin-top: var(--spacing-xs); }
 .profile-list { margin-bottom: var(--spacing-xs); }

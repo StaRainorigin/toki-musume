@@ -384,7 +384,12 @@ export class AppController {
     profiles: { whitelisted: string[]; blacklisted: string[] }
   }> {
     const win = this.poller.getLastWindow()
-    const idleMs = await getIdleMs()
+    let idleMs = 0
+    try {
+      idleMs = await getIdleMs()
+    } catch (e) {
+      console.error('getIdleMs failed', e)
+    }
     return {
       mode: this.modeMachine.mode,
       activeGoal: this.modeMachine.activeGoal,
