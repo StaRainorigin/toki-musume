@@ -4,7 +4,7 @@ import type {
 } from './types'
 import { DEFAULT_PERSONA, DEFAULT_LLM_CONFIG, DEFAULT_COMPANION_CONFIG } from './config'
 import {
-  createInitialState, startGoal, endGoal, startRest,
+  createInitialState, startGoal, endGoal, startRest, endRest,
   enterCompanion, checkRestTimeout,
   type ModeMachineState,
 } from './state/mode-machine'
@@ -309,6 +309,15 @@ export class AppController {
   }
 
   async switchMode(m: 'companion' | 'study' | 'work' | 'rest'): Promise<void> {
+    // 如果在休息模式，先结束休息
+    if (this.modeMachine.mode === 'rest' && m !== 'rest') {
+      const restEnd = endRest(this.modeMachine)
+      if (restEnd.ok) {
+        this.modeMachine = restEnd.state
+        this.pushSystem('休息结束')
+      }
+    }
+
     // 如果有活跃目标且切换到别的模式，先自动结束当前目标
     if (this.modeMachine.activeGoal && this.modeMachine.mode !== m) {
       const r = endGoal(this.modeMachine)
