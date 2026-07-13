@@ -30,6 +30,7 @@ export async function generateDailySummary(
     date,
     appTimeDistribution: aggregated.appTimeDistribution,
     slackCount: aggregated.slackCount,
+    slackDetails: aggregated.slackDetails,
     sokaiCount: aggregated.sokaiCount,
     sokaiTotalMinutes: aggregated.sokaiTotalMinutes,
     goals: aggregated.goals as DailySummary['goals'],

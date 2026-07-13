@@ -1,9 +1,10 @@
-import type { LogEvent } from '../types'
+import type { LogEvent, SlackDetail } from '../types'
 
 export type AggregatedDay = {
   date: string
   appTimeDistribution: Record<string, number>
   slackCount: number
+  slackDetails: SlackDetail[]
   sokaiCount: number
   sokaiTotalMinutes: number
   goals: Array<{ topic: string; mode: string; completed: boolean; minutes: number }>
@@ -12,6 +13,7 @@ export type AggregatedDay = {
 export function aggregateDay(events: LogEvent[], date: string): AggregatedDay {
   const appTime: Record<string, number> = {}
   let slackCount = 0
+  const slackDetails: SlackDetail[] = []
   let sokaiCount = 0
   let sokaiTotalMinutes = 0
   const goalMap = new Map<string, { topic: string; mode: string; startedAt: number; endedAt?: number; completed: boolean }>()
@@ -22,6 +24,12 @@ export function aggregateDay(events: LogEvent[], date: string): AggregatedDay {
     switch (evt.type) {
       case 'slack_detected':
         slackCount++
+        slackDetails.push({
+          time: new Date(evt.ts).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+          processName: evt.processName ?? 'unknown',
+          windowTitle: evt.windowTitle ?? '',
+          reason: evt.note ?? '',
+        })
         break
       case 'sokai_yila':
         sokaiCount++
@@ -70,6 +78,7 @@ export function aggregateDay(events: LogEvent[], date: string): AggregatedDay {
     date,
     appTimeDistribution: appTime,
     slackCount,
+    slackDetails,
     sokaiCount,
     sokaiTotalMinutes,
     goals,

@@ -49,6 +49,18 @@ function selectSummary(date: string) {
       <div v-if="selected" class="summary-detail">
         <h4>{{ selected.date }}</h4>
         <p>摸鱼 {{ selected.slackCount }} 次 | 赖账 {{ selected.sokaiCount }} 次 ({{ selected.sokaiTotalMinutes }}m)</p>
+
+        <h5>摸鱼详情</h5>
+        <div v-if="selected.slackDetails && selected.slackDetails.length > 0" class="slack-details">
+          <div v-for="(d, i) in selected.slackDetails" :key="i" class="slack-item">
+            <span class="slack-time">{{ d.time }}</span>
+            <span class="slack-app">{{ d.processName }}</span>
+            <span class="slack-title">{{ d.windowTitle.slice(0, 30) }}</span>
+            <span class="slack-reason">{{ d.reason }}</span>
+          </div>
+        </div>
+        <div v-else class="empty-sub">无摸鱼记录</div>
+
         <h5>应用时长</h5>
         <ul>
           <li v-for="(min, app) in selected.appTimeDistribution" :key="app">
@@ -79,6 +91,13 @@ function selectSummary(date: string) {
 .summary-detail { flex: 1; }
 .comment { margin-top: var(--spacing-md); padding: var(--spacing-md); background: var(--color-bg-secondary); border-radius: var(--radius-md); font-style: italic; color: var(--color-text-secondary); }
 .empty { color: var(--color-text-muted); padding: var(--spacing-lg); text-align: center; }
+.empty-sub { color: var(--color-text-muted); font-size: var(--font-sm); padding: var(--spacing-xs) 0; }
 .check-icon { color: var(--color-rest); }
 .x-icon { color: var(--color-danger); }
+.slack-details { max-height: 200px; overflow-y: auto; }
+.slack-item { display: flex; gap: var(--spacing-xs); padding: var(--spacing-xs) 0; border-bottom: 1px solid var(--color-border-light); font-size: var(--font-sm); align-items: baseline; }
+.slack-time { color: var(--color-text-muted); flex-shrink: 0; width: 40px; }
+.slack-app { font-weight: bold; color: var(--color-text); flex-shrink: 0; width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slack-title { color: var(--color-text-secondary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slack-reason { color: var(--color-accent); flex-shrink: 0; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

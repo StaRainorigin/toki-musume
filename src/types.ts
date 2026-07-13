@@ -127,10 +127,18 @@ export type RuntimeState = {
 }
 
 // ===== 日总结 =====
+export type SlackDetail = {
+  time: string        // 时间点 HH:MM
+  processName: string
+  windowTitle: string
+  reason: string
+}
+
 export type DailySummary = {
   date: string // YYYY-MM-DD
   appTimeDistribution: Record<string, number> // processName -> minutes
   slackCount: number
+  slackDetails: SlackDetail[]   // 每次摸鱼的详情
   sokaiCount: number
   sokaiTotalMinutes: number
   goals: Array<{ topic: string; mode: GoalMode; completed: boolean; minutes: number }>
