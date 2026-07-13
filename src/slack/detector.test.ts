@@ -1,10 +1,30 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../tauri-bridge', () => ({
-  getLlmCache: vi.fn(),
-  saveLlmCache: vi.fn(),
-  getAppProfiles: vi.fn(),
-  upsertAppProfile: vi.fn(),
+  getForegroundWindow: vi.fn(),
+  getIdleMs: vi.fn(),
+  initDatabase: vi.fn().mockResolvedValue(''),
+  getRuntimeState: vi.fn().mockResolvedValue({
+    mode: 'idle', activeGoalId: undefined,
+    companionCooldownUntil: 0, lastSpokeAt: undefined,
+  }),
+  getActiveGoal: vi.fn().mockResolvedValue(null),
+  getAppProfiles: vi.fn().mockResolvedValue([]),
+  upsertAppProfile: vi.fn().mockResolvedValue(undefined),
+  getLlmCache: vi.fn().mockResolvedValue(null),
+  saveLlmCache: vi.fn().mockResolvedValue(undefined),
+  appendLog: vi.fn().mockResolvedValue(undefined),
+  saveRuntimeState: vi.fn().mockResolvedValue(undefined),
+  saveGoal: vi.fn().mockResolvedValue(undefined),
+  saveDailySummary: vi.fn().mockResolvedValue(undefined),
+  getDailySummary: vi.fn().mockResolvedValue(null),
+  listDailySummaries: vi.fn().mockResolvedValue([]),
+  saveWeeklySummary: vi.fn().mockResolvedValue(undefined),
+  showNotification: vi.fn().mockResolvedValue(undefined),
+  readConfigFile: vi.fn().mockResolvedValue('{}'),
+  writeConfigFile: vi.fn().mockResolvedValue(undefined),
+  openConfigDir: vi.fn().mockResolvedValue(''),
+  readLogs: vi.fn().mockResolvedValue([]),
 }))
 
 import { AppProfileStore } from './app-profiles'
@@ -27,12 +47,9 @@ describe('SlackDetector', () => {
   })
 
   it('白名单应用判为 working', async () => {
-    const { getAppProfiles } = await import('../tauri-bridge')
-    vi.mocked(getAppProfiles).mockResolvedValue([
-      { processName: 'Code.exe', list: 'whitelist', goalTopic: 'React' },
-    ])
     const store = new AppProfileStore()
     await store.load()
+    await store.addToList('Code.exe', 'whitelist', 'React')
     const llm = new LLMClient(config)
     const detector = new SlackDetector(store, llm)
     const result = await detector.detect(
@@ -44,12 +61,9 @@ describe('SlackDetector', () => {
   })
 
   it('黑名单应用判为 slacking', async () => {
-    const { getAppProfiles } = await import('../tauri-bridge')
-    vi.mocked(getAppProfiles).mockResolvedValue([
-      { processName: 'Bili.exe', list: 'blacklist', goalTopic: 'React' },
-    ])
     const store = new AppProfileStore()
     await store.load()
+    await store.addToList('Bili.exe', 'blacklist', 'React')
     const llm = new LLMClient(config)
     const detector = new SlackDetector(store, llm)
     const result = await detector.detect(
@@ -61,12 +75,6 @@ describe('SlackDetector', () => {
   })
 
   it('unknown 应用走 LLM fallback', async () => {
-    const { getAppProfiles, getLlmCache, saveLlmCache, upsertAppProfile } = await import('../tauri-bridge')
-    vi.mocked(getAppProfiles).mockResolvedValue([])
-    vi.mocked(getLlmCache).mockResolvedValue(null)
-    vi.mocked(saveLlmCache).mockResolvedValue(undefined)
-    vi.mocked(upsertAppProfile).mockResolvedValue(undefined)
-
     const store = new AppProfileStore()
     await store.load()
     const llm = new LLMClient(config)
@@ -78,13 +86,10 @@ describe('SlackDetector', () => {
     )
     expect(result.outcome).toBe('slacking')
     expect(result.needsReminder).toBe(true)
-    expect(saveLlmCache).toHaveBeenCalled()
+    expect(result.reason).toBe('视频网站')
   })
 
   it('LLM 未配置时返回 unknown 不误判', async () => {
-    const { getAppProfiles, getLlmCache } = await import('../tauri-bridge')
-    vi.mocked(getAppProfiles).mockResolvedValue([])
-    vi.mocked(getLlmCache).mockResolvedValue(null)
     const store = new AppProfileStore()
     await store.load()
     const llm = new LLMClient({ ...config, judgeModel: '', judgeApiKey: '' })

@@ -43,7 +43,7 @@ fn append_log(_app: tauri::AppHandle, event: storage::LogEventInput) -> Result<(
     storage::append_log_event(&logs_dir, &event)
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 fn read_logs(_app: tauri::AppHandle, start_date: String, end_date: String) -> Result<Vec<String>, String> {
     let app_dir = get_app_data_dir()?;
     let logs_dir = app_dir.join("logs");

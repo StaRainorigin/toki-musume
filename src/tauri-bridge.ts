@@ -32,7 +32,7 @@ export async function appendLog(event: LogEvent): Promise<void> {
 }
 
 export async function readLogs(startDate: string, endDate: string): Promise<LogEvent[]> {
-  const lines = await invoke<string[]>('read_logs', { startDate, endDate })
+  const lines = await invoke<string[]>('read_logs', { start_date: startDate, end_date: endDate })
   return lines.map((line) => JSON.parse(line) as LogEvent)
 }
 
@@ -55,9 +55,9 @@ export async function getRuntimeState(): Promise<RuntimeState> {
 export async function saveRuntimeState(state: RuntimeState): Promise<void> {
   await invoke('save_runtime_state', {
     mode: state.mode,
-    activeGoalId: state.activeGoalId ?? null,
-    companionCooldownUntil: state.companionCooldownUntil,
-    lastSpokeAt: state.lastSpokeAt ?? null,
+    active_goal_id: state.activeGoalId ?? null,
+    companion_cooldown_until: state.companionCooldownUntil,
+    last_spoke_at: state.lastSpokeAt ?? null,
   })
 }
 
@@ -69,7 +69,7 @@ export async function getAppProfiles(goalTopic?: string): Promise<AppProfile[]> 
     goal_topic: string | null
     learned_at: number | null
     pending_suggest: boolean
-  }>>('get_app_profiles', { goalTopic: goalTopic ?? null })
+  }>>('get_app_profiles', { goal_topic: goalTopic ?? null })
   return rows.map((r) => ({
     processName: r.process_name,
     list: r.list as AppProfile['list'],
@@ -81,11 +81,11 @@ export async function getAppProfiles(goalTopic?: string): Promise<AppProfile[]> 
 
 export async function upsertAppProfile(profile: AppProfile): Promise<void> {
   await invoke('upsert_app_profile', {
-    processName: profile.processName,
+    process_name: profile.processName,
     list: profile.list,
-    goalTopic: profile.goalTopic ?? null,
-    learnedAt: profile.learnedAt ?? null,
-    pendingSuggest: profile.pendingSuggest ?? false,
+    goal_topic: profile.goalTopic ?? null,
+    learned_at: profile.learnedAt ?? null,
+    pending_suggest: profile.pendingSuggest ?? false,
   })
 }
 
@@ -113,7 +113,7 @@ export async function getActiveGoal(goalId: string): Promise<Goal | null> {
     started_at: number
     ended_at: number | null
     status: string
-  } | null>('get_active_goal', { goalId })
+  } | null>('get_active_goal', { goal_id: goalId })
   if (!row) return null
   return {
     id: row.id,
@@ -132,7 +132,9 @@ export async function getLlmCache(processName: string, goalTopic: string): Promi
     related: boolean
     reason: string | null
     judged_at: number
-  } | null>('get_llm_cache', { processName, goalTopic })
+  } | null>('get_llm_cache', {
+    query: { process_name: processName, goal_topic: goalTopic },
+  })
   if (!row) return null
   return { related: row.related, reason: row.reason ?? '' }
 }
@@ -143,17 +145,19 @@ export async function saveLlmCache(
   result: SlackJudgeResult,
 ): Promise<void> {
   await invoke('save_llm_cache', {
-    processName,
-    goalTopic,
-    related: result.related,
-    reason: result.reason,
-    judgedAt: Date.now(),
+    data: {
+      process_name: processName,
+      goal_topic: goalTopic,
+      related: result.related,
+      reason: result.reason,
+      judged_at: Date.now(),
+    },
   })
 }
 
 // ===== summaries =====
 export async function saveDailySummary(date: string, data: string): Promise<void> {
-  await invoke('save_daily_summary', { date, data, generatedAt: Date.now() })
+  await invoke('save_daily_summary', { date, data, generated_at: Date.now() })
 }
 
 export async function getDailySummary(date: string): Promise<string | null> {
@@ -161,12 +165,12 @@ export async function getDailySummary(date: string): Promise<string | null> {
 }
 
 export async function listDailySummaries(startDate: string, endDate: string): Promise<Array<{ date: string; data: string }>> {
-  const rows = await invoke<Array<[string, string]>>('list_daily_summaries', { startDate, endDate })
+  const rows = await invoke<Array<[string, string]>>('list_daily_summaries', { start_date: startDate, end_date: endDate })
   return rows.map(([date, data]) => ({ date, data }))
 }
 
 export async function saveWeeklySummary(weekStart: string, data: string): Promise<void> {
-  await invoke('save_weekly_summary', { weekStart, data, generatedAt: Date.now() })
+  await invoke('save_weekly_summary', { week_start: weekStart, data, generated_at: Date.now() })
 }
 
 // ===== 通知 =====

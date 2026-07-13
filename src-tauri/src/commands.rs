@@ -20,7 +20,7 @@ pub struct RuntimeStateRow {
     pub last_spoke_at: Option<i64>,
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn get_runtime_state(state: tauri::State<DbState>) -> Result<RuntimeStateRow, String> {
     with_conn(&state, |conn| {
         let mut stmt = conn
@@ -40,7 +40,7 @@ pub fn get_runtime_state(state: tauri::State<DbState>) -> Result<RuntimeStateRow
     })
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn save_runtime_state(
     state: tauri::State<DbState>,
     mode: String,
@@ -68,7 +68,7 @@ pub struct AppProfileRow {
     pub pending_suggest: bool,
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn get_app_profiles(
     state: tauri::State<DbState>,
     goal_topic: Option<String>,
@@ -104,7 +104,7 @@ pub fn get_app_profiles(
     })
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn upsert_app_profile(
     state: tauri::State<DbState>,
     process_name: String,
@@ -140,7 +140,7 @@ pub struct GoalRow {
     pub status: String,
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn save_goal(state: tauri::State<DbState>, goal: GoalRow) -> Result<(), String> {
     with_conn(&state, |conn| {
         conn.execute(
@@ -157,7 +157,7 @@ pub fn save_goal(state: tauri::State<DbState>, goal: GoalRow) -> Result<(), Stri
     })
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn get_active_goal(state: tauri::State<DbState>, goal_id: String) -> Result<Option<GoalRow>, String> {
     with_conn(&state, |conn| {
         let mut stmt = conn
@@ -190,18 +190,23 @@ pub struct LlmCacheRow {
     pub judged_at: i64,
 }
 
-#[tauri::command]
+#[derive(Debug, Deserialize)]
+pub struct LlmCacheQuery {
+    pub process_name: String,
+    pub goal_topic: String,
+}
+
+#[tauri::command(rename_all = "snake_case")]
 pub fn get_llm_cache(
     state: tauri::State<DbState>,
-    process_name: String,
-    goal_topic: String,
+    query: LlmCacheQuery,
 ) -> Result<Option<LlmCacheRow>, String> {
     with_conn(&state, |conn| {
         let mut stmt = conn
             .prepare("SELECT process_name, goal_topic, related, reason, judged_at FROM llm_cache WHERE process_name = ? AND goal_topic = ?")
             .map_err(|e| e.to_string())?;
         let result = stmt
-            .query_row([&process_name, &goal_topic], |r| {
+            .query_row([&query.process_name, &query.goal_topic], |r| {
                 Ok(LlmCacheRow {
                     process_name: r.get(0)?,
                     goal_topic: r.get(1)?,
@@ -215,14 +220,19 @@ pub fn get_llm_cache(
     })
 }
 
-#[tauri::command]
+#[derive(Debug, Deserialize)]
+pub struct LlmCacheSave {
+    pub process_name: String,
+    pub goal_topic: String,
+    pub related: bool,
+    pub reason: Option<String>,
+    pub judged_at: i64,
+}
+
+#[tauri::command(rename_all = "snake_case")]
 pub fn save_llm_cache(
     state: tauri::State<DbState>,
-    process_name: String,
-    goal_topic: String,
-    related: bool,
-    reason: Option<String>,
-    judged_at: i64,
+    data: LlmCacheSave,
 ) -> Result<(), String> {
     with_conn(&state, |conn| {
         conn.execute(
@@ -230,8 +240,8 @@ pub fn save_llm_cache(
              VALUES (?, ?, ?, ?, ?)
              ON CONFLICT(process_name, goal_topic) DO UPDATE SET related = ?, reason = ?, judged_at = ?",
             rusqlite::params![
-                process_name, goal_topic, related as i32, reason, judged_at,
-                related as i32, reason, judged_at,
+                data.process_name, data.goal_topic, data.related as i32, data.reason, data.judged_at,
+                data.related as i32, data.reason, data.judged_at,
             ],
         )
         .map_err(|e| e.to_string())?;
@@ -240,7 +250,7 @@ pub fn save_llm_cache(
 }
 
 // ===== summaries =====
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn save_daily_summary(
     state: tauri::State<DbState>,
     date: String,
@@ -259,7 +269,7 @@ pub fn save_daily_summary(
     })
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn get_daily_summary(state: tauri::State<DbState>, date: String) -> Result<Option<String>, String> {
     with_conn(&state, |conn| {
         let mut stmt = conn
@@ -270,7 +280,7 @@ pub fn get_daily_summary(state: tauri::State<DbState>, date: String) -> Result<O
     })
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn list_daily_summaries(
     state: tauri::State<DbState>,
     start_date: String,
@@ -293,7 +303,7 @@ pub fn list_daily_summaries(
     })
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn save_weekly_summary(
     state: tauri::State<DbState>,
     week_start: String,
@@ -313,7 +323,7 @@ pub fn save_weekly_summary(
 }
 
 // ===== 系统通知（占位，实际用 Web Notification）=====
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn show_notification(_title: String, _body: String) -> Result<(), String> {
     Ok(())
 }
@@ -326,7 +336,7 @@ pub struct AppConfigRow {
     pub companion_config: String,
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn get_app_config(state: tauri::State<DbState>) -> Result<AppConfigRow, String> {
     with_conn(&state, |conn| {
         let mut stmt = conn
@@ -345,7 +355,7 @@ pub fn get_app_config(state: tauri::State<DbState>) -> Result<AppConfigRow, Stri
     })
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn save_app_config(
     state: tauri::State<DbState>,
     persona: String,

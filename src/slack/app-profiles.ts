@@ -1,5 +1,4 @@
 import type { AppProfile, ListKind } from '../types'
-import { getAppProfiles, upsertAppProfile } from '../tauri-bridge'
 
 type ProfileCache = Map<string, Map<string, AppProfile>>
 
@@ -9,15 +8,8 @@ export class AppProfileStore {
   private cache: ProfileCache = new Map()
   private loaded = false
 
-  async load(goalTopic?: string): Promise<void> {
-    const profiles = await getAppProfiles(goalTopic)
-    for (const p of profiles) {
-      const key = p.goalTopic ?? GLOBAL_KEY
-      if (!this.cache.has(key)) {
-        this.cache.set(key, new Map())
-      }
-      this.cache.get(key)!.set(p.processName, p)
-    }
+  async load(_goalTopic?: string): Promise<void> {
+    // 内存模式：不从数据库加载，黑白名单在运行时动态学习
     this.loaded = true
   }
 
@@ -55,7 +47,6 @@ export class AppProfileStore {
       this.cache.set(key, new Map())
     }
     this.cache.get(key)!.set(processName, profile)
-    await upsertAppProfile(profile)
   }
 
   getPendingSuggestions(goalTopic?: string): AppProfile[] {
@@ -77,7 +68,6 @@ export class AppProfileStore {
       const p = profiles.get(processName)
       if (p) {
         p.pendingSuggest = true
-        await upsertAppProfile(p)
       }
     }
   }
