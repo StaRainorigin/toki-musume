@@ -10,8 +10,10 @@ import {
 } from './state/mode-machine'
 import { WindowPoller } from './perception/poller'
 import { checkIdle, createIdleDetectorState, type IdleDetectorState } from './perception/idle-detector'
+import { WindowHistoryTracker } from './perception/window-history'
+import { WindowJudgeScheduler } from './perception/window-judge-scheduler'
+import type { WindowRecord } from './perception/window-history'
 import { AppProfileStore } from './slack/app-profiles'
-import { SlackDetector } from './slack/detector'
 import {
   createReminderState, checkReminderLevel, executeReminder,
   handleSokai, resetSlack, markSlackStart, updateLevel,
@@ -38,10 +40,11 @@ export type ControllerState = {
 export class AppController {
   private modeMachine: ModeMachineState = createInitialState()
   private poller = new WindowPoller()
+  private history = new WindowHistoryTracker()
+  private judgeScheduler!: WindowJudgeScheduler
   private idleState: IdleDetectorState = createIdleDetectorState()
   private reminderState: ReminderState = createReminderState()
   private profiles!: AppProfileStore
-  private detector!: SlackDetector
   private triggerEngine!: CompanionTriggerEngine
   private llm!: LLMClient
   private scheduler!: SummaryScheduler
@@ -64,9 +67,13 @@ export class AppController {
     this.llmConfig = recovered.llmConfig
     this.companionConfig = recovered.companionConfig
     this.llm = new LLMClient(this.llmConfig)
-    this.detector = new SlackDetector(this.profiles, this.llm)
     this.triggerEngine = new CompanionTriggerEngine(this.profiles, (e) => this.handleCompanionEvent(e))
     this.scheduler = new SummaryScheduler(this.llm)
+    this.judgeScheduler = new WindowJudgeScheduler(this.history, this.llm, (result, records) => this.handleJudgeResult(result, records))
+
+    // toki-musume 自身进程永远白名单
+    await this.profiles.addToList('toki-musume.exe', 'whitelist')
+    await this.profiles.addToList('toki-musume', 'whitelist')
 
     this.pushSystem(`${this.persona.characterName} 已启动`)
     this.emitState()
@@ -82,11 +89,15 @@ export class AppController {
     const mode = this.modeMachine.mode
     const goal = this.modeMachine.activeGoal
 
+    // 1. 记录窗口历史（只记录，不判断）
+    this.history.recordWindow(win)
+
     await this.log({
       ts: Date.now(), type: 'window_switch', mode,
       goalId: goal?.id, processName: win.processName, windowTitle: win.windowTitle,
     })
 
+    // 2. 空闲检测
     const idleResult = await checkIdle(this.idleState)
     this.idleState = idleResult.state
     if (idleResult.transition) {
@@ -101,6 +112,7 @@ export class AppController {
       )
     }
 
+    // 3. 休息超时检查
     const restTimeout = checkRestTimeout(this.modeMachine, Date.now())
     if (restTimeout && restTimeout.ok) {
       this.modeMachine = restTimeout.state
@@ -108,35 +120,71 @@ export class AppController {
       await this.persistRuntimeState()
     }
 
+    // 4. 如果在学习/工作模式，触发 LLM 判断调度器
     if ((mode === 'study' || mode === 'work') && goal) {
-      const detection = await this.detector.detect(win, goal)
-      if (detection.outcome === 'slacking') {
-        this.reminderState = markSlackStart(this.reminderState)
-        this.slackCount++
-        await this.log({
-          ts: Date.now(), type: 'slack_detected', mode, goalId: goal.id,
-          processName: win.processName, note: `摸鱼：${win.windowTitle}`,
-        })
-      } else if (detection.outcome === 'working') {
+      // 先查快速分类（黑白名单 + 正则）
+      const listKind = this.profiles.lookup(win.processName, goal.topic)
+      if (listKind === 'whitelist') {
+        // 白名单直接重置摸鱼状态
         if (this.reminderState.slackStartedAt !== null) {
           this.reminderState = resetSlack(this.reminderState)
         }
-      }
-
-      const nextLevel = checkReminderLevel(this.reminderState)
-      if (nextLevel && detection.needsReminder) {
-        this.reminderState = updateLevel(this.reminderState, nextLevel)
-        const { message, notified } = await executeReminder(this.llm, nextLevel, goal)
-        this.pushAssistant(message)
-        await this.log({
-          ts: Date.now(), type: 'reminder', mode, goalId: goal.id,
-          note: `第${nextLevel}级提醒${notified ? '（系统通知）' : ''}`,
-          data: { level: nextLevel, message },
-        })
+      } else if (listKind === 'blacklist') {
+        // 黑名单直接触发摸鱼
+        this.handleSlackingDetected(win, goal, '黑名单匹配')
+      } else {
+        // 未知应用：交给 LLM 判断调度器（30秒首次检查）
+        this.judgeScheduler.onWindowSwitch(goal)
       }
     }
 
     this.triggerEngine.handleWindowSwitch(win, mode)
+    this.emitState()
+  }
+
+  /** LLM 判断结果回调 */
+  private async handleJudgeResult(
+    result: { isSlacking: boolean; slackRatio: number; reason: string },
+    records: WindowRecord[],
+  ): Promise<void> {
+    const goal = this.modeMachine.activeGoal
+    if (!goal) return
+
+    if (result.isSlacking && result.slackRatio > 0.3) {
+      // 摸鱼占比超过 30% 才触发
+      const lastRecord = records[records.length - 1]
+      const win: ForegroundWindow = lastRecord
+        ? { processName: lastRecord.processName, windowTitle: lastRecord.windowTitle, pid: 0 }
+        : { processName: 'unknown', windowTitle: 'unknown', pid: 0 }
+      this.handleSlackingDetected(win, goal, result.reason)
+    } else {
+      // 没在摸鱼，重置提醒状态
+      if (this.reminderState.slackStartedAt !== null) {
+        this.reminderState = resetSlack(this.reminderState)
+      }
+    }
+  }
+
+  /** 摸鱼检测到后的处理：记录 + 分级提醒 */
+  private async handleSlackingDetected(win: ForegroundWindow, goal: Goal, reason: string): Promise<void> {
+    this.reminderState = markSlackStart(this.reminderState)
+    this.slackCount++
+    await this.log({
+      ts: Date.now(), type: 'slack_detected', mode: this.modeMachine.mode, goalId: goal.id,
+      processName: win.processName, note: `摸鱼：${win.windowTitle}（${reason}）`,
+    })
+
+    const nextLevel = checkReminderLevel(this.reminderState)
+    if (nextLevel) {
+      this.reminderState = updateLevel(this.reminderState, nextLevel)
+      const { message, notified } = await executeReminder(this.llm, nextLevel, goal)
+      this.pushAssistant(message)
+      await this.log({
+        ts: Date.now(), type: 'reminder', mode: this.modeMachine.mode, goalId: goal.id,
+        note: `第${nextLevel}级提醒${notified ? '（系统通知）' : ''}`,
+        data: { level: nextLevel, message },
+      })
+    }
     this.emitState()
   }
 
@@ -270,6 +318,7 @@ export class AppController {
         await saveGoal(endedGoal)
       }
     }
+    this.judgeScheduler.stopPeriodic()
 
     if (m === 'companion') {
       const r = enterCompanion(this.modeMachine)
@@ -286,6 +335,8 @@ export class AppController {
           ts: Date.now(), type: 'goal_started', mode: this.modeMachine.mode,
           goalId: r.state.activeGoal!.id, data: { goal: r.state.activeGoal },
         })
+        // 启动 LLM 定期检查
+        this.judgeScheduler.startPeriodic(r.state.activeGoal)
       }
     }
     await this.persistRuntimeState()
@@ -294,6 +345,7 @@ export class AppController {
   }
 
   async endActiveGoal(): Promise<void> {
+    this.judgeScheduler.stopPeriodic()
     const r = endGoal(this.modeMachine)
     if (r.ok) {
       this.modeMachine = r.state
@@ -310,7 +362,6 @@ export class AppController {
     this.llmConfig = { ...llmConfig }
     this.companionConfig = { ...companionConfig }
     this.llm = new LLMClient(this.llmConfig)
-    this.detector = new SlackDetector(this.profiles, this.llm)
     this.triggerEngine.stopFallbackTimer()
     this.triggerEngine.startFallbackTimer(this.companionConfig.fallbackIntervalMinutes)
     // 写回 config.json
@@ -369,6 +420,7 @@ export class AppController {
     this.poller.stop()
     this.triggerEngine.stopFallbackTimer()
     this.scheduler.stop()
+    this.judgeScheduler.stopPeriodic()
   }
 
   // ===== 调试方法 =====
@@ -382,14 +434,15 @@ export class AppController {
     lastSpokeAt: number
     cooldownUntil: number
     profiles: { whitelisted: string[]; blacklisted: string[] }
+    windowHistory: Array<{ processName: string; windowTitle: string; durationMs: number }>
+    lastJudgeResult: { isSlacking: boolean; slackRatio: number; reason: string } | null
+    lastJudgeAt: number
   }> {
     const win = this.poller.getLastWindow()
     let idleMs = 0
     try {
       idleMs = await getIdleMs()
-    } catch (e) {
-      console.error('getIdleMs failed', e)
-    }
+    } catch { /* ignore */ }
     return {
       mode: this.modeMachine.mode,
       activeGoal: this.modeMachine.activeGoal,
@@ -400,12 +453,19 @@ export class AppController {
       lastSpokeAt: this.lastSpokeAt,
       cooldownUntil: this.cooldownUntil,
       profiles: this.profiles.debugSnapshot(),
+      windowHistory: this.history.getRecentRecords(10).map((r) => ({
+        processName: r.processName,
+        windowTitle: r.windowTitle,
+        durationMs: r.durationMs,
+      })),
+      lastJudgeResult: this.judgeScheduler.getLastResult(),
+      lastJudgeAt: this.judgeScheduler.getLastCheckAt(),
     }
   }
 
   async debugDetectSlack(): Promise<{
     foregroundWindow: ForegroundWindow | null
-    detection: { outcome: string; needsReminder: boolean; reason?: string } | null
+    detection: { outcome: string; needsReminder: boolean; reason?: string; slackRatio?: number } | null
     goal: Goal | null
     error?: string
   }> {
@@ -414,17 +474,32 @@ export class AppController {
     const goal = this.modeMachine.activeGoal
     if (!win) return { foregroundWindow: null, detection: null, goal, error: '未获取到前台窗口' }
     if (!goal) return { foregroundWindow: win, detection: null, goal: null, error: '当前无活跃目标，无法检测摸鱼' }
+
+    // 先查快速分类
+    const listKind = this.profiles.lookup(win.processName, goal.topic)
+    if (listKind === 'whitelist') {
+      return { foregroundWindow: win, detection: { outcome: 'working', needsReminder: false, reason: '白名单' }, goal }
+    }
+    if (listKind === 'blacklist') {
+      return { foregroundWindow: win, detection: { outcome: 'slacking', needsReminder: true, reason: '黑名单' }, goal }
+    }
+
+    // 手动触发 LLM 判断
     try {
-      const detection = await this.detector.detect(win, goal)
-      return {
-        foregroundWindow: win,
-        detection: {
-          outcome: detection.outcome,
-          needsReminder: detection.needsReminder,
-          reason: detection.reason,
-        },
-        goal,
+      const result = await this.judgeScheduler.checkNow(goal)
+      if (result) {
+        return {
+          foregroundWindow: win,
+          detection: {
+            outcome: result.isSlacking ? 'slacking' : 'working',
+            needsReminder: result.isSlacking,
+            reason: result.reason,
+            slackRatio: result.slackRatio,
+          },
+          goal,
+        }
       }
+      return { foregroundWindow: win, detection: { outcome: 'unknown', needsReminder: false, reason: 'LLM 未配置或无记录' }, goal }
     } catch (e) {
       return { foregroundWindow: win, detection: null, goal, error: String(e) }
     }

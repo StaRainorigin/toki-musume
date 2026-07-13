@@ -51,6 +51,7 @@ export class WindowPoller {
 
   async forcePoll(): Promise<ForegroundWindow | null> {
     const win = await getForegroundWindow()
+    console.log('[DEBUG] forcePoll result:', JSON.stringify(win))
     this.lastCheckAt = Date.now()
     if (win) {
       this.lastWindow = win

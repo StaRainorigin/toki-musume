@@ -116,6 +116,21 @@ onUnmounted(() => {
           <span class="profile-items">{{ snapshot.profiles.blacklisted.join(', ') || '空' }}</span>
         </div>
       </div>
+
+      <!-- 窗口历史 -->
+      <div v-if="snapshot && snapshot.windowHistory.length > 0" class="window-history">
+        <span class="label">最近窗口历史 (10分钟内):</span>
+        <div v-for="(r, i) in snapshot.windowHistory.slice(-8)" :key="i" class="history-item">
+          <Icon icon="tabler:clock" width="12" /> {{ Math.round(r.durationMs / 1000) }}s — {{ r.processName }}: {{ r.windowTitle.slice(0, 40) }}
+        </div>
+      </div>
+
+      <!-- 上次 LLM 判断 -->
+      <div v-if="snapshot && snapshot.lastJudgeResult" class="judge-result">
+        <span class="label">上次 LLM 判断 ({{ fmtTs(snapshot.lastJudgeAt) }}):</span>
+        <div>摸鱼: <span :class="snapshot.lastJudgeResult.isSlacking ? 'text-red' : 'text-green'">{{ snapshot.lastJudgeResult.isSlacking ? '是' : '否' }}</span> (占比 {{ Math.round(snapshot.lastJudgeResult.slackRatio * 100) }}%)</div>
+        <div class="reason">{{ snapshot.lastJudgeResult.reason }}</div>
+      </div>
     </section>
 
     <section>
@@ -187,6 +202,10 @@ h4 { margin-bottom: var(--spacing-xs); display: flex; align-items: center; gap: 
 .profiles { margin-top: var(--spacing-xs); }
 .profile-list { margin-bottom: var(--spacing-xs); }
 .profile-items { color: var(--color-text-muted); }
+.window-history { margin-top: var(--spacing-sm); padding-top: var(--spacing-xs); border-top: 1px dashed var(--color-border); }
+.history-item { font-size: var(--font-xs); color: var(--color-text-secondary); padding: 1px 0; display: flex; align-items: center; gap: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.judge-result { margin-top: var(--spacing-sm); padding: var(--spacing-xs) var(--spacing-sm); background: var(--color-bg-secondary); border-radius: var(--radius-sm); }
+.judge-result .reason { color: var(--color-text-secondary); font-size: var(--font-xs); margin-top: 2px; }
 .loading, .hint { color: var(--color-text-muted); font-style: italic; }
 .error { color: var(--color-danger); }
 .detect-result div { padding: 2px 0; }
