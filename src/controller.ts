@@ -125,7 +125,7 @@ export class AppController {
     const restTimeout = checkRestTimeout(this.modeMachine, Date.now())
     if (restTimeout && restTimeout.ok) {
       this.modeMachine = restTimeout.state
-      this.pushSystem('休息结束')
+      this.pushAssistant('休息时间到啦，继续吧～')
       await this.persistRuntimeState()
     }
 
@@ -134,17 +134,15 @@ export class AppController {
       await this.checkPomodoroPhase()
     }
 
-    // 4. 如果在学习/工作模式，触发 LLM 判断调度器
-    if ((mode === 'study' || mode === 'work') && goal) {
-      // 先查快速分类（黑白名单 + 正则）
+    // 4. 陪伴监督：只在番茄钟专注阶段检测摸鱼
+    if ((mode === 'study' || mode === 'work') && goal && this.pomodoro.phase === 'focus') {
       const listKind = this.profiles.lookup(win.processName, goal.topic)
       if (listKind === 'whitelist') {
-        // 白名单直接重置摸鱼状态
+        // 回到正事了，重置摸鱼状态
         if (this.reminderState.slackStartedAt !== null) {
           this.reminderState = resetSlack(this.reminderState)
         }
       } else if (listKind === 'blacklist') {
-        // 黑名单直接触发摸鱼
         this.handleSlackingDetected(win, goal, '黑名单匹配')
       } else {
         // 未知应用：交给 LLM 判断调度器（30秒首次检查）
@@ -188,11 +186,25 @@ export class AppController {
       processName: win.processName, note: `摸鱼：${win.windowTitle}（${reason}）`,
     })
 
+    // 角色语气提醒，基于当前任务上下文
+    const task = this.taskStore.getActiveTask()
     const nextLevel = checkReminderLevel(this.reminderState)
     if (nextLevel) {
       this.reminderState = updateLevel(this.reminderState, nextLevel)
       const { message, notified } = await executeReminder(this.llm, nextLevel, goal)
-      this.pushAssistant(message)
+      // 如果 LLM 生成了提醒，用它；否则用角色语气的默认提醒
+      if (message) {
+        this.pushAssistant(message)
+      } else {
+        const taskName = task?.title ?? goal.topic
+        if (nextLevel === 1) {
+          this.pushAssistant(`诶？你不是应该在${goal.mode === 'study' ? '学习' : '工作'}「${taskName}」吗？`)
+        } else if (nextLevel === 2) {
+          this.pushAssistant(`喂，你已经摸鱼一会儿了，回来继续「${taskName}」吧。`)
+        } else {
+          this.pushAssistant(`你摸鱼太久了！说好的${goal.mode === 'study' ? '学习' : '工作'}呢？认真点好不好？`)
+        }
+      }
       await this.log({
         ts: Date.now(), type: 'reminder', mode: this.modeMachine.mode, goalId: goal.id,
         note: `第${nextLevel}级提醒${notified ? '（系统通知）' : ''}`,
@@ -218,16 +230,25 @@ export class AppController {
     if (this.pomodoro.phase === 'focus') {
       // 专注结束 → 累加时间到任务 → 进入休息
       const focusMin = this.pomodoro.phaseDurationMin
+      const task = this.taskStore.getActiveTask()
       const completedTask = this.taskStore.addFocusMinutesToActive(focusMin)
       this.pomodoro = completeFocus(this.pomodoro)
-      this.pushSystem(`专注结束！完成了 ${focusMin} 分钟。${completedTask?.status === 'completed' ? '🎉 任务完成！' : '休息一下吧～'}`)
+
+      // 角色语气推送
       if (completedTask?.status === 'completed') {
+        this.pushAssistant(`太棒了！你刚完成了 ${focusMin} 分钟的专注，「${completedTask.title}」已经完成啦！🎉 辛苦了，休息一下吧～`)
         await this.log({
           ts: now, type: 'task_completed', mode: this.modeMachine.mode,
           note: `任务完成：${completedTask.title}`,
           data: { taskId: completedTask.id, completedMinutes: completedTask.completedMinutes },
         })
+      } else {
+        const totalMin = task?.completedMinutes ?? focusMin
+        const planned = task?.plannedMinutes ?? 0
+        const progress = planned > 0 ? Math.round((totalMin / planned) * 100) : 0
+        this.pushAssistant(`好厉害！专注了 ${focusMin} 分钟呢～${planned > 0 ? `「${task?.title}」已经完成 ${progress}% 了，` : ''}休息一下，喝口水吧！`)
       }
+
       this.pomodoro = startBreak(this.pomodoro)
       await this.log({
         ts: now, type: 'pomodoro_focus_end', mode: this.modeMachine.mode,
@@ -235,7 +256,7 @@ export class AppController {
       })
     } else {
       // 休息结束 → 回到专注
-      this.pushSystem('休息结束，继续加油！')
+      this.pushAssistant('休息好了吗？继续吧，加油～')
       this.pomodoro = startFocus(this.pomodoro)
       await this.log({
         ts: now, type: 'pomodoro_break_end', mode: this.modeMachine.mode,
@@ -249,33 +270,32 @@ export class AppController {
   startPomodoro(): void {
     const task = this.taskStore.getActiveTask()
     if (!task) {
-      this.pushSystem('先选一个任务再开始番茄钟哦')
+      this.pushAssistant('先选一个任务吧，我帮你计时～')
       return
     }
     this.pomodoro = startFocus(this.pomodoro)
-    this.pushSystem(`开始专注！${this.pomodoro.focusMin} 分钟，加油～`)
+    this.pushAssistant(`好的！开始专注「${task.title}」，${this.pomodoro.focusMin} 分钟，加油哦～我会帮你看着的！`)
     this.emitState()
   }
 
-  /** 暂停番茄钟 */
+  /** 停止番茄钟 */
   pausePomodoro(): void {
     this.pomodoro = stopPomodoro(this.pomodoro)
-    this.pushSystem('番茄钟已暂停')
+    this.pushAssistant('好的，先停一下。准备好了随时继续～')
     this.emitState()
   }
 
   /** 跳过当前阶段 */
   skipPhase(): void {
     if (this.pomodoro.phase === 'focus') {
-      // 只累加实际经过的分钟数（向上取整，至少1分钟）
       const elapsedMin = Math.max(1, Math.ceil((Date.now() - this.pomodoro.phaseStartedAt) / 60000))
       this.taskStore.addFocusMinutesToActive(elapsedMin)
       this.pomodoro = completeFocus(this.pomodoro)
       this.pomodoro = startBreak(this.pomodoro)
-      this.pushSystem(`跳过专注（计 ${elapsedMin} 分钟），进入休息`)
+      this.pushAssistant(`这轮专注了 ${elapsedMin} 分钟，去休息一下吧～`)
     } else if (this.pomodoro.phase !== 'idle') {
       this.pomodoro = startFocus(this.pomodoro)
-      this.pushSystem('跳过休息，继续专注')
+      this.pushAssistant('休息够了吗？那继续吧～')
     }
     this.emitState()
   }
@@ -295,7 +315,7 @@ export class AppController {
 
   addTask(title: string, type: TaskType, mode: GoalMode, plannedMinutes?: number, description?: string): void {
     this.taskStore.addTask(title, type, mode, plannedMinutes, description)
-    this.pushSystem(`添加任务：${title}`)
+    this.pushAssistant(`收到！已添加任务「${title}」`)
     this.emitState()
   }
 
@@ -306,7 +326,7 @@ export class AppController {
 
   completeTask(id: string): void {
     this.taskStore.completeTask(id)
-    this.pushSystem('任务完成！🎉')
+    this.pushAssistant('任务完成！辛苦啦～🎉')
     // 如果当前任务完成了，停止番茄钟
     if (this.pomodoro.phase !== 'idle' && !this.taskStore.getActiveTask()) {
       this.pomodoro = stopPomodoro(this.pomodoro)
@@ -317,7 +337,7 @@ export class AppController {
   setActiveTask(id: string): void {
     const task = this.taskStore.setActiveTask(id)
     if (task) {
-      this.pushSystem(`开始任务：${task.title}`)
+      this.pushAssistant(`好的，开始「${task.title}」吧！我会帮你计时的～`)
       // 如果在学习/工作模式且番茄钟空闲，自动开始专注
       if ((this.modeMachine.mode === 'study' || this.modeMachine.mode === 'work') && this.pomodoro.phase === 'idle') {
         this.startPomodoro()
@@ -334,10 +354,10 @@ export class AppController {
 
   async generateDailyPlan(): Promise<TaskSuggestion[]> {
     if (!this.llm.isConfigured('generate')) {
-      this.pushSystem('LLM 未配置，无法生成计划')
+      this.pushAssistant('我还没连上大脑（LLM 未配置），没办法帮你规划呢')
       return []
     }
-    this.pushSystem('正在生成今日计划建议...')
+    this.pushAssistant('让我想想今天给你安排什么好...')
     try {
       const { system, user } = buildDailyPlanPrompt()
       const raw = await this.llm.chat(
@@ -346,13 +366,13 @@ export class AppController {
       )
       const suggestions = parseTaskSuggestions(raw)
       if (suggestions.length > 0) {
-        this.pushSystem(`AI 建议了 ${suggestions.length} 个任务，请查看并确认`)
+        this.pushAssistant(`我想到了 ${suggestions.length} 个今天的任务，你看看怎么样？`)
       } else {
-        this.pushSystem('AI 没能生成有效的任务建议')
+        this.pushAssistant('嗯...我暂时没想到什么好的建议，你自己加吧～')
       }
       return suggestions
     } catch (e) {
-      this.pushSystem('计划生成失败')
+        this.pushAssistant('计划生成失败了...你先手动加几个任务吧')
       console.error('generateDailyPlan failed', e)
       return []
     }
@@ -360,7 +380,7 @@ export class AppController {
 
   confirmDailyPlan(suggestions: TaskSuggestion[]): void {
     this.taskStore.addBatch(suggestions)
-    this.pushSystem(`已添加 ${suggestions.length} 个任务到今日列表`)
+    this.pushAssistant(`好！${suggestions.length} 个任务都加好了，选一个开始吧～`)
     this.emitState()
   }
 
