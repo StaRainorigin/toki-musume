@@ -364,6 +364,17 @@ export class AppController {
     this.emitState()
   }
 
+  /** 手动生成今日总结 */
+  async generateSummaryNow(date: string): Promise<void> {
+    try {
+      const summary = await generateDailySummary(this.llm, date)
+      this.pushSystem(summary.comment || '总结已生成')
+    } catch (e) {
+      console.error('generateSummaryNow failed', e)
+      throw e
+    }
+  }
+
   private async handleCompanionEvent(event: CompanionEvent): Promise<void> {
     const ctx = {
       mode: this.modeMachine.mode,

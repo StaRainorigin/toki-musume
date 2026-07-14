@@ -23,6 +23,7 @@ const {
   addTask, removeTask, completeTask, setActiveTask,
   startPomodoro, pausePomodoro, skipPhase,
   generateDailyPlan, confirmDailyPlan,
+  controller: ctrl,
 } = useController()
 
 const modeInfo = useModeIcons()
@@ -40,6 +41,16 @@ async function handleGeneratePlan() {
   const suggestions = await generateDailyPlan()
   if (suggestions.length > 0) {
     pendingSuggestions.value = suggestions
+  }
+}
+
+async function handleGenerateSummary() {
+  const date = new Date().toISOString().slice(0, 10)
+  try {
+    await ctrl.generateSummaryNow(date)
+    messages.value.push({ role: 'system', content: '今日总结已生成，点击下方"查看历史"查看', ts: Date.now() })
+  } catch (e) {
+    messages.value.push({ role: 'system', content: `总结生成失败: ${e}`, ts: Date.now() })
   }
 }
 
@@ -172,6 +183,7 @@ onUnmounted(() => {
     <TodaySummary
       :slack-count="slackCount"
       @view-full="showHistory = !showHistory"
+      @generate-summary="handleGenerateSummary"
     />
 
     <HistoryView v-if="showHistory" @close="showHistory = false" />
