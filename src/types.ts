@@ -15,6 +15,58 @@ export type Goal = {
   status: GoalStatus
 }
 
+// ===== 任务系统 =====
+export type TaskType = 'timed' | 'target'
+export type TaskStatus = 'pending' | 'active' | 'completed' | 'abandoned'
+
+export type Task = {
+  id: string
+  title: string
+  type: TaskType             // timed=计时(番茄钟), target=目标任务
+  mode: GoalMode             // study | work
+  status: TaskStatus
+  // 计时任务
+  plannedMinutes?: number    // 计划总时长
+  completedMinutes?: number   // 已完成时长
+  pomodoroCount?: number     // 已完成番茄数
+  // 目标任务
+  description?: string
+  // 通用
+  createdAt: number
+  startedAt?: number
+  completedAt?: number
+}
+
+// ===== 番茄钟 =====
+export type PomodoroPhase = 'focus' | 'break' | 'long_break' | 'idle'
+
+export type PomodoroState = {
+  phase: PomodoroPhase
+  phaseStartedAt: number
+  phaseDurationMin: number
+  cycleCount: number
+  focusMin: number
+  breakMin: number
+  longBreakMin: number
+  cyclesBeforeLongBreak: number
+}
+
+export type PomodoroConfig = {
+  focusMin: number
+  breakMin: number
+  longBreakMin: number
+  cyclesBeforeLongBreak: number
+}
+
+// ===== AI 今日计划建议 =====
+export type TaskSuggestion = {
+  title: string
+  type: TaskType
+  mode: GoalMode
+  plannedMinutes?: number
+  description?: string
+}
+
 // ===== 前台窗口感知 =====
 export type ForegroundWindow = {
   processName: string
@@ -52,6 +104,9 @@ export type EventType =
   | 'companion_speak'
   | 'user_chat'
   | 'mode_switch'
+  | 'pomodoro_focus_end'
+  | 'pomodoro_break_end'
+  | 'task_completed'
 
 export type LogEvent = {
   ts: number

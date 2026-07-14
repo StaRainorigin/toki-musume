@@ -1,6 +1,7 @@
 import type {
   Mode, Goal, LogEvent, ForegroundWindow,
   PersonaConfig, LLMConfig, CompanionConfig, ChatLLMResponse,
+  Task, TaskType, GoalMode, PomodoroState, TaskSuggestion,
 } from './types'
 import { DEFAULT_PERSONA, DEFAULT_LLM_CONFIG, DEFAULT_COMPANION_CONFIG } from './config'
 import {
@@ -28,6 +29,12 @@ import { recoverState } from './recovery/runtime-state'
 import { generateDailySummary } from './summary/daily'
 import { SummaryScheduler } from './scheduler'
 import type { DailySummary } from './types'
+import { TaskStore } from './state/task-store'
+import {
+  createPomodoroState, startFocus, startBreak, completeFocus,
+  stopPomodoro, checkPhaseEnd, getRemainingSec, getProgress, getPhaseLabel,
+} from './state/pomodoro'
+import { buildDailyPlanPrompt, parseTaskSuggestions } from './llm/daily-plan-prompt'
 
 export type UIMessage = { role: 'user' | 'assistant' | 'system'; content: string; ts: number }
 
@@ -48,6 +55,8 @@ export class AppController {
   private triggerEngine!: CompanionTriggerEngine
   private llm!: LLMClient
   private scheduler!: SummaryScheduler
+  taskStore = new TaskStore()
+  pomodoro: PomodoroState = createPomodoroState()
   persona: PersonaConfig = { ...DEFAULT_PERSONA }
   llmConfig: LLMConfig = { ...DEFAULT_LLM_CONFIG }
   companionConfig: CompanionConfig = { ...DEFAULT_COMPANION_CONFIG }
@@ -120,6 +129,11 @@ export class AppController {
       await this.persistRuntimeState()
     }
 
+    // 3.5 番茄钟阶段检查
+    if (this.pomodoro.phase !== 'idle') {
+      await this.checkPomodoroPhase()
+    }
+
     // 4. 如果在学习/工作模式，触发 LLM 判断调度器
     if ((mode === 'study' || mode === 'work') && goal) {
       // 先查快速分类（黑白名单 + 正则）
@@ -185,6 +199,155 @@ export class AppController {
         data: { level: nextLevel, message },
       })
     }
+    this.emitState()
+  }
+
+  // ===== 番茄钟 =====
+
+  /** 检查番茄钟阶段是否结束，自动切换 */
+  private async checkPomodoroPhase(): Promise<void> {
+    if (this.pomodoro.phase === 'idle') return
+    const now = Date.now()
+    if (!checkPhaseEnd(this.pomodoro, now)) return
+
+    if (this.pomodoro.phase === 'focus') {
+      // 专注结束 → 累加时间到任务 → 进入休息
+      const focusMin = this.pomodoro.phaseDurationMin
+      const completedTask = this.taskStore.addFocusMinutesToActive(focusMin)
+      this.pomodoro = completeFocus(this.pomodoro)
+      this.pushSystem(`专注结束！完成了 ${focusMin} 分钟。${completedTask?.status === 'completed' ? '🎉 任务完成！' : '休息一下吧～'}`)
+      this.pomodoro = startBreak(this.pomodoro)
+      await this.log({
+        ts: now, type: 'pomodoro_focus_end', mode: this.modeMachine.mode,
+        data: { focusMin, cycleCount: this.pomodoro.cycleCount },
+      })
+    } else {
+      // 休息结束 → 回到专注
+      this.pushSystem('休息结束，继续加油！')
+      this.pomodoro = startFocus(this.pomodoro)
+      await this.log({
+        ts: now, type: 'pomodoro_break_end', mode: this.modeMachine.mode,
+        data: { nextPhase: 'focus' },
+      })
+    }
+    this.emitState()
+  }
+
+  /** 开始番茄钟（用户手动触发或进入任务时自动触发） */
+  startPomodoro(): void {
+    const task = this.taskStore.getActiveTask()
+    if (!task) {
+      this.pushSystem('先选一个任务再开始番茄钟哦')
+      return
+    }
+    this.pomodoro = startFocus(this.pomodoro)
+    this.pushSystem(`开始专注！${this.pomodoro.focusMin} 分钟，加油～`)
+    this.emitState()
+  }
+
+  /** 暂停番茄钟 */
+  pausePomodoro(): void {
+    this.pomodoro = stopPomodoro(this.pomodoro)
+    this.pushSystem('番茄钟已暂停')
+    this.emitState()
+  }
+
+  /** 跳过当前阶段 */
+  skipPhase(): void {
+    if (this.pomodoro.phase === 'focus') {
+      const focusMin = this.pomodoro.phaseDurationMin
+      this.taskStore.addFocusMinutesToActive(focusMin)
+      this.pomodoro = completeFocus(this.pomodoro)
+      this.pomodoro = startBreak(this.pomodoro)
+      this.pushSystem('跳过专注，进入休息')
+    } else if (this.pomodoro.phase !== 'idle') {
+      this.pomodoro = startFocus(this.pomodoro)
+      this.pushSystem('跳过休息，继续专注')
+    }
+    this.emitState()
+  }
+
+  /** 获取番茄钟显示信息 */
+  getPomodoroDisplay(): { phase: string; label: string; remainingSec: number; progress: number; cycleCount: number } {
+    return {
+      phase: this.pomodoro.phase,
+      label: getPhaseLabel(this.pomodoro.phase),
+      remainingSec: getRemainingSec(this.pomodoro),
+      progress: getProgress(this.pomodoro),
+      cycleCount: this.pomodoro.cycleCount,
+    }
+  }
+
+  // ===== 任务管理 =====
+
+  addTask(title: string, type: TaskType, mode: GoalMode, plannedMinutes?: number, description?: string): void {
+    this.taskStore.addTask(title, type, mode, plannedMinutes, description)
+    this.pushSystem(`添加任务：${title}`)
+    this.emitState()
+  }
+
+  removeTask(id: string): void {
+    this.taskStore.removeTask(id)
+    this.emitState()
+  }
+
+  completeTask(id: string): void {
+    this.taskStore.completeTask(id)
+    this.pushSystem('任务完成！🎉')
+    // 如果当前任务完成了，停止番茄钟
+    if (this.pomodoro.phase !== 'idle' && !this.taskStore.getActiveTask()) {
+      this.pomodoro = stopPomodoro(this.pomodoro)
+    }
+    this.emitState()
+  }
+
+  setActiveTask(id: string): void {
+    const task = this.taskStore.setActiveTask(id)
+    if (task) {
+      this.pushSystem(`开始任务：${task.title}`)
+      // 如果在学习/工作模式且番茄钟空闲，自动开始专注
+      if ((this.modeMachine.mode === 'study' || this.modeMachine.mode === 'work') && this.pomodoro.phase === 'idle') {
+        this.startPomodoro()
+      }
+    }
+    this.emitState()
+  }
+
+  getTasks(): Task[] {
+    return this.taskStore.getTodayTasks()
+  }
+
+  // ===== AI 今日计划 =====
+
+  async generateDailyPlan(): Promise<TaskSuggestion[]> {
+    if (!this.llm.isConfigured('generate')) {
+      this.pushSystem('LLM 未配置，无法生成计划')
+      return []
+    }
+    this.pushSystem('正在生成今日计划建议...')
+    try {
+      const { system, user } = buildDailyPlanPrompt()
+      const raw = await this.llm.chat(
+        [{ role: 'system', content: system }, { role: 'user', content: user }],
+        'generate',
+      )
+      const suggestions = parseTaskSuggestions(raw)
+      if (suggestions.length > 0) {
+        this.pushSystem(`AI 建议了 ${suggestions.length} 个任务，请查看并确认`)
+      } else {
+        this.pushSystem('AI 没能生成有效的任务建议')
+      }
+      return suggestions
+    } catch (e) {
+      this.pushSystem('计划生成失败')
+      console.error('generateDailyPlan failed', e)
+      return []
+    }
+  }
+
+  confirmDailyPlan(suggestions: TaskSuggestion[]): void {
+    this.taskStore.addBatch(suggestions)
+    this.pushSystem(`已添加 ${suggestions.length} 个任务到今日列表`)
     this.emitState()
   }
 
@@ -346,6 +509,11 @@ export class AppController {
         })
         // 启动 LLM 定期检查
         this.judgeScheduler.startPeriodic(r.state.activeGoal)
+        // 如果有活跃任务，自动开始番茄钟
+        const activeTask = this.taskStore.getActiveTask()
+        if (activeTask && this.pomodoro.phase === 'idle') {
+          this.startPomodoro()
+        }
       }
     }
     await this.persistRuntimeState()
@@ -355,6 +523,7 @@ export class AppController {
 
   async endActiveGoal(): Promise<void> {
     this.judgeScheduler.stopPeriodic()
+    this.pomodoro = stopPomodoro(this.pomodoro)
     const r = endGoal(this.modeMachine)
     if (r.ok) {
       this.modeMachine = r.state
@@ -430,6 +599,7 @@ export class AppController {
     this.triggerEngine.stopFallbackTimer()
     this.scheduler.stop()
     this.judgeScheduler.stopPeriodic()
+    this.pomodoro = stopPomodoro(this.pomodoro)
   }
 
   // ===== 调试方法 =====
