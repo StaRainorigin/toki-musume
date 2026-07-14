@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Icon } from '@iconify/vue'
-import type { Task, TaskType, GoalMode } from '../types'
+import type { Task, TaskType } from '../types'
 
 const props = defineProps<{
   tasks: Task[]
 }>()
 
 const emit = defineEmits<{
-  addTask: [task: { title: string; type: TaskType; mode: GoalMode; plannedMinutes?: number; description?: string }]
+  addTask: [task: { title: string; type: TaskType; plannedMinutes?: number; description?: string }]
   removeTask: [id: string]
   completeTask: [id: string]
   setActiveTask: [id: string]
@@ -18,7 +18,6 @@ const emit = defineEmits<{
 const showAddForm = ref(false)
 const newTitle = ref('')
 const newType = ref<TaskType>('timed')
-const newMode = ref<GoalMode>('study')
 const newMinutes = ref(60)
 const newDescription = ref('')
 
@@ -30,7 +29,6 @@ function handleAdd() {
   emit('addTask', {
     title: newTitle.value.trim(),
     type: newType.value,
-    mode: newMode.value,
     plannedMinutes: newType.value === 'timed' ? newMinutes.value : undefined,
     description: newType.value === 'target' ? newDescription.value : undefined,
   })
@@ -72,10 +70,6 @@ function taskProgress(task: Task): number {
           <option value="timed">计时任务</option>
           <option value="target">目标任务</option>
         </select>
-        <select v-model="newMode">
-          <option value="study">学习</option>
-          <option value="work">工作</option>
-        </select>
         <input v-if="newType === 'timed'" v-model.number="newMinutes" type="number" min="10" placeholder="分钟" class="minutes-input" />
       </div>
       <input v-if="newType === 'target'" v-model="newDescription" placeholder="目标描述..." class="task-input" />
@@ -98,7 +92,6 @@ function taskProgress(task: Task): number {
         <div class="task-content">
           <div class="task-title">{{ task.title }}</div>
           <div class="task-meta">
-            <span class="task-mode">{{ task.mode === 'study' ? '📖' : '💼' }}</span>
             <span v-if="task.type === 'timed' && task.plannedMinutes" class="task-progress-text">
               {{ task.completedMinutes ?? 0 }}/{{ task.plannedMinutes }}m
             </span>

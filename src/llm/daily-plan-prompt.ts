@@ -15,9 +15,8 @@ export function buildDailyPlanPrompt(yesterdaySummary?: string): { system: strin
 {
   "title": "任务标题",
   "type": "timed" | "target",
-  "mode": "study" | "work",
-  "plannedMinutes": 60,  // 仅 timed 任务需要
-  "description": "目标描述"  // 仅 target 任务需要
+  "plannedMinutes": 60,
+  "description": "目标描述"
 }
 
 只返回 JSON 数组，不要加其他内容。`
@@ -37,7 +36,7 @@ export function parseTaskSuggestions(raw: string): TaskSuggestion[] {
     const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
     const parsed = JSON.parse(cleaned) as TaskSuggestion[]
     if (!Array.isArray(parsed)) return []
-    return parsed.filter((t) => t.title && t.type && t.mode)
+    return parsed.filter((t) => t.title && t.type)
   } catch {
     return []
   }

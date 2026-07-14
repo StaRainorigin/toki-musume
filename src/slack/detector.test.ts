@@ -33,7 +33,7 @@ import { LLMClient } from '../llm/client'
 import type { Goal, LLMConfig } from '../types'
 
 const goal: Goal = {
-  id: 'g1', mode: 'study', topic: 'React', startedAt: Date.now(), status: 'active',
+  id: 'g1', topic: 'React', startedAt: Date.now(), status: 'active',
 }
 const config: LLMConfig = {
   judgeModel: 'm', judgeApiKey: 'k', judgeApiBase: 'https://a.com/v1',

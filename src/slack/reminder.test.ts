@@ -18,9 +18,12 @@ import {
   generateReminderMessage,
 } from './reminder'
 import { LLMClient } from '../llm/client'
-import type { Goal, LLMConfig } from '../types'
+import type { LLMConfig, Goal } from '../types'
 
-const goal: Goal = { id: 'g1', mode: 'study', topic: 'React', startedAt: Date.now(), status: 'active' }
+const goal: Goal = {
+  id: 'g1', topic: 'React', startedAt: Date.now(), status: 'active',
+}
+
 const config: LLMConfig = {
   judgeModel: 'm', judgeApiKey: 'k', judgeApiBase: 'https://a.com/v1',
   generateModel: 'm', generateApiKey: 'k', generateApiBase: 'https://a.com/v1',

@@ -2,12 +2,10 @@
 export type Mode = 'focus' | 'rest'
 
 // ===== 目标 =====
-export type GoalMode = 'study' | 'work'
 export type GoalStatus = 'active' | 'completed' | 'abandoned'
 
 export type Goal = {
   id: string
-  mode: GoalMode
   topic: string
   plannedMinutes?: number
   startedAt: number
@@ -23,7 +21,6 @@ export type Task = {
   id: string
   title: string
   type: TaskType             // timed=计时(番茄钟), target=目标任务
-  mode: GoalMode             // study | work
   status: TaskStatus
   // 计时任务
   plannedMinutes?: number    // 计划总时长
@@ -62,7 +59,6 @@ export type PomodoroConfig = {
 export type TaskSuggestion = {
   title: string
   type: TaskType
-  mode: GoalMode
   plannedMinutes?: number
   description?: string
 }
@@ -139,7 +135,7 @@ export type ReminderLevel = 1 | 2 | 3
 
 // ===== 意图识别（对话场景）=====
 export type Intent =
-  | { type: 'start_task'; mode: GoalMode; topic: string; plannedMinutes?: number }
+  | { type: 'start_task'; topic: string; plannedMinutes?: number }
   | { type: 'take_break' }
   | { type: 'sokai_yila'; minutes: number }
   | { type: 'end_goal' }
@@ -197,7 +193,7 @@ export type DailySummary = {
   slackDetails: SlackDetail[]   // 每次摸鱼的详情
   sokaiCount: number
   sokaiTotalMinutes: number
-  goals: Array<{ topic: string; mode: GoalMode; completed: boolean; minutes: number }>
+  goals: Array<{ topic: string; completed: boolean; minutes: number }>
   comment: string
   generatedAt: number
 }

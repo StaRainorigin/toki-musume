@@ -95,7 +95,7 @@ onUnmounted(() => {
       </div>
       <div v-if="snapshot" class="info-grid">
         <div><span class="label">模式:</span> {{ snapshot.mode }}</div>
-        <div><span class="label">目标:</span> {{ snapshot.activeGoal ? `${snapshot.activeGoal.topic} (${snapshot.activeGoal.mode})` : '无' }}</div>
+        <div><span class="label">目标:</span> {{ snapshot.activeGoal ? `${snapshot.activeGoal.topic}` : '无' }}</div>
         <div><span class="label">前台进程:</span> {{ snapshot.foregroundWindow?.processName ?? '未检测' }}</div>
         <div><span class="label">窗口标题:</span> {{ snapshot.foregroundWindow?.windowTitle ?? '-' }}</div>
         <div><span class="label">空闲时间:</span> {{ fmtIdle(snapshot.idleMs) }}</div>
@@ -158,7 +158,7 @@ onUnmounted(() => {
             <div><span class="label">需要提醒:</span> {{ detectResult.detection.needsReminder ? '是' : '否' }}</div>
             <div v-if="detectResult.detection.reason"><span class="label">理由:</span> {{ detectResult.detection.reason }}</div>
           </div>
-          <div v-if="detectResult.goal"><span class="label">目标:</span> {{ detectResult.goal.topic }} ({{ detectResult.goal.mode }})</div>
+          <div v-if="detectResult.goal"><span class="label">目标:</span> {{ detectResult.goal.topic }}</div>
         </template>
       </div>
       <div v-else class="hint">点击"手动检测"测试当前窗口是否被判定为摸鱼</div>

@@ -4,7 +4,7 @@ import type { PersonaConfig, Goal } from '../types'
 
 const persona: PersonaConfig = { characterName: '小时', appName: 'toki-musume' }
 const goal: Goal = {
-  id: 'g1', mode: 'study', topic: 'React', plannedMinutes: 120,
+  id: 'g1', topic: 'React', plannedMinutes: 120,
   startedAt: Date.now() - 40 * 60000, status: 'active',
 }
 

@@ -4,7 +4,7 @@ import {
   startGoal,
   endGoal,
   startRest,
-  enterCompanion,
+  enterRest,
   checkRestTimeout,
 } from './mode-machine'
 
@@ -13,9 +13,9 @@ describe('mode-machine', () => {
     expect(createInitialState().mode).toBe('rest')
   })
 
-  it('开始学习目标进入 focus 模式', () => {
+  it('开始目标进入 focus 模式', () => {
     const s = createInitialState()
-    const r = startGoal(s, 'study', 'React', 120)
+    const r = startGoal(s, 'React', 120)
     expect(r.ok).toBe(true)
     if (r.ok) {
       expect(r.state.mode).toBe('focus')
@@ -25,7 +25,7 @@ describe('mode-machine', () => {
   })
 
   it('结束目标回到 rest', () => {
-    const r1 = startGoal(createInitialState(), 'work', '论文')
+    const r1 = startGoal(createInitialState(), '论文')
     if (!r1.ok) throw new Error('should succeed')
     const r = endGoal(r1.state)
     expect(r.ok).toBe(true)
@@ -35,10 +35,10 @@ describe('mode-machine', () => {
     }
   })
 
-  it('休息中可以开始目标（不再阻止）', () => {
+  it('休息中可以开始目标', () => {
     const r1 = startRest(createInitialState(), 15)
     if (!r1.ok) throw new Error('should succeed')
-    const r = startGoal(r1.state, 'study', 'React')
+    const r = startGoal(r1.state, 'React')
     expect(r.ok).toBe(true)
   })
 
@@ -54,9 +54,9 @@ describe('mode-machine', () => {
   })
 
   it('有活跃目标时进入休息会自动结束目标', () => {
-    const r1 = startGoal(createInitialState(), 'study', 'React')
+    const r1 = startGoal(createInitialState(), 'React')
     if (!r1.ok) throw new Error('should succeed')
-    const r = enterCompanion(r1.state)
+    const r = enterRest(r1.state)
     expect(r.ok).toBe(true)
     if (r.ok) {
       expect(r.state.mode).toBe('rest')
@@ -66,7 +66,7 @@ describe('mode-machine', () => {
 
   it('无目标可进入休息', () => {
     const s = createInitialState()
-    const r = enterCompanion(s)
+    const r = enterRest(s)
     expect(r.ok).toBe(true)
     if (r.ok) {
       expect(r.state.mode).toBe('rest')

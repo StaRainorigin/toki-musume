@@ -1,4 +1,4 @@
-import type { Mode, Goal, GoalMode } from '../types'
+import type { Mode, Goal } from '../types'
 
 export type ModeMachineState = {
   mode: Mode
@@ -22,13 +22,12 @@ export type TransitionResult =
 
 export function startGoal(
   state: ModeMachineState,
-  mode: GoalMode,
   topic: string,
   plannedMinutes?: number,
 ): TransitionResult {
   const goal: Goal = {
     id: `goal_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    mode, topic, plannedMinutes,
+    topic, plannedMinutes,
     startedAt: Date.now(),
     status: 'active',
   }
@@ -57,12 +56,12 @@ export function endGoal(state: ModeMachineState): TransitionResult {
   return { ok: true, state: newState, event: { type: 'goal_ended', goal: endedGoal } }
 }
 
-export function startRest(state: ModeMachineState, _minutes: number): TransitionResult {
+export function startRest(state: ModeMachineState, minutes: number): TransitionResult {
   const newState: ModeMachineState = {
     ...state,
     mode: 'rest',
     restReturnMode: state.mode,
-    restUntil: Date.now() + _minutes * 60 * 1000,
+    restUntil: Date.now() + minutes * 60 * 1000,
   }
   return { ok: true, state: newState, event: { type: 'mode_switch', from: state.mode, to: 'rest' } }
 }
@@ -81,21 +80,13 @@ export function endRest(state: ModeMachineState): TransitionResult {
   return { ok: true, state: newState, event: { type: 'mode_switch', from: 'rest', to: returnMode } }
 }
 
-export function enterCompanion(state: ModeMachineState): TransitionResult {
+export function enterRest(state: ModeMachineState): TransitionResult {
   let s = state
   if (s.activeGoal) {
     const ended = endGoal(s)
     if (ended.ok) s = ended.state
   }
   const newState: ModeMachineState = { ...s, mode: 'rest' }
-  return { ok: true, state: newState, event: { type: 'mode_switch', from: state.mode, to: 'rest' } }
-}
-
-export function backToIdle(state: ModeMachineState): TransitionResult {
-  if (state.activeGoal) {
-    return { ok: false, reason: '有活跃目标，无法回到空闲' }
-  }
-  const newState: ModeMachineState = { ...state, mode: 'rest' }
   return { ok: true, state: newState, event: { type: 'mode_switch', from: state.mode, to: 'rest' } }
 }
 

@@ -1,7 +1,7 @@
 import type {
   Mode, Goal, LogEvent, ForegroundWindow,
   PersonaConfig, LLMConfig, CompanionConfig, ChatLLMResponse,
-  Task, TaskType, GoalMode, PomodoroState, TaskSuggestion,
+  Task, TaskType, PomodoroState, TaskSuggestion,
 } from './types'
 import { DEFAULT_PERSONA, DEFAULT_LLM_CONFIG, DEFAULT_COMPANION_CONFIG } from './config'
 import {
@@ -206,11 +206,11 @@ export class AppController {
       } else {
         const taskName = task?.title ?? goal.topic
         if (nextLevel === 1) {
-          this.pushAssistant(`诶？你不是应该在${goal.mode === 'study' ? '学习' : '工作'}「${taskName}」吗？`)
+          this.pushAssistant(`诶？你不是应该在专注「${taskName}」吗？`)
         } else if (nextLevel === 2) {
           this.pushAssistant(`喂，你已经摸鱼一会儿了，回来继续「${taskName}」吧。`)
         } else {
-          this.pushAssistant(`你摸鱼太久了！说好的${goal.mode === 'study' ? '学习' : '工作'}呢？认真点好不好？`)
+          this.pushAssistant(`你摸鱼太久了！说好的专注呢？认真点好不好？`)
         }
       }
       await this.log({
@@ -327,8 +327,8 @@ export class AppController {
 
   // ===== 任务管理 =====
 
-  addTask(title: string, type: TaskType, mode: GoalMode, plannedMinutes?: number, description?: string): void {
-    this.taskStore.addTask(title, type, mode, plannedMinutes, description)
+  addTask(title: string, type: TaskType, plannedMinutes?: number, description?: string): void {
+    this.taskStore.addTask(title, type, plannedMinutes, description)
     this.pushAssistant(`收到！已添加任务「${title}」`)
     this.emitState()
   }
@@ -355,7 +355,6 @@ export class AppController {
       // 创建/更新 goal 关联
       const goal: Goal = {
         id: task.id,
-        mode: task.mode,
         topic: task.title,
         plannedMinutes: task.plannedMinutes,
         startedAt: task.startedAt ?? Date.now(),
@@ -494,7 +493,7 @@ export class AppController {
       case 'start_task': {
         // 创建任务并开始专注
         const task = this.taskStore.addTask(
-          intent.topic, 'timed', intent.mode,
+          intent.topic, 'timed',
           intent.plannedMinutes ?? 60,
         )
         this.setActiveTask(task.id)

@@ -66,7 +66,7 @@ describe('AppController 端到端逻辑测试', () => {
 
   it('setActiveTask 开始任务后进入专注模式', async () => {
     await controller.init()
-    const task = controller.taskStore.addTask('学React', 'timed', 'study', 60)
+    const task = controller.taskStore.addTask('学React', 'timed', 60)
     controller.setActiveTask(task.id)
     const stateCb = controller.onStateChange as unknown as (s: { mode: string; activeGoal: { topic: string } | null }) => void
     const lastCall = vi.mocked(stateCb).mock.calls[vi.mocked(stateCb).mock.calls.length - 1][0]
@@ -77,7 +77,7 @@ describe('AppController 端到端逻辑测试', () => {
 
   it('pausePomodoro 停止专注回到休息', async () => {
     await controller.init()
-    const task = controller.taskStore.addTask('学React', 'timed', 'study', 60)
+    const task = controller.taskStore.addTask('学React', 'timed', 60)
     controller.setActiveTask(task.id)
     controller.pausePomodoro()
     const stateCb = controller.onStateChange as unknown as (s: { mode: string }) => void
@@ -117,7 +117,7 @@ describe('AppController 端到端逻辑测试', () => {
 
   it('debugGetSnapshot 返回正确状态', async () => {
     await controller.init()
-    const task = controller.taskStore.addTask('学React', 'timed', 'study', 60)
+    const task = controller.taskStore.addTask('学React', 'timed', 60)
     controller.setActiveTask(task.id)
     const snapshot = await controller.debugGetSnapshot()
     expect(snapshot.mode).toBe('focus')

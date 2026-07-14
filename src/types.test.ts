@@ -9,7 +9,7 @@ describe('types', () => {
 
   it('Goal 类型可用', () => {
     const g: Goal = {
-      id: 'g1', mode: 'study', topic: 'React',
+      id: 'g1', topic: 'React',
       startedAt: Date.now(), status: 'active',
     }
     expect(g.topic).toBe('React')

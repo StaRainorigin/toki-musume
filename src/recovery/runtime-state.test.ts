@@ -38,11 +38,11 @@ describe('recoverState', () => {
   it('有超时目标时提示', async () => {
     vi.mocked(initDatabase).mockResolvedValue('')
     vi.mocked(getRuntimeState).mockResolvedValue({
-      mode: 'focus', activeGoalId: 'g1',
+      mode: 'rest', activeGoalId: 'g1',
       companionCooldownUntil: 0, lastSpokeAt: undefined,
     })
     vi.mocked(getActiveGoal).mockResolvedValue({
-      id: 'g1', mode: 'study', topic: 'React', plannedMinutes: 30,
+      id: 'g1', topic: 'React', plannedMinutes: 30,
       startedAt: Date.now() - 60 * 60000, status: 'active',
     })
     vi.mocked(getAppProfiles).mockResolvedValue([])

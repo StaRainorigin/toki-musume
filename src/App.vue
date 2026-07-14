@@ -13,7 +13,7 @@ import PomodoroTimer from './components/PomodoroTimer.vue'
 import { useController } from './composables/useController'
 import { useModeIcons } from './composables/useModeIcons'
 import { useTheme } from './composables/useTheme'
-import type { TaskType, GoalMode, TaskSuggestion } from './types'
+import type { TaskType, TaskSuggestion } from './types'
 
 const {
   mode, activeGoal, slackCount, messages,
@@ -59,8 +59,8 @@ function handleConfirmPlan() {
   pendingSuggestions.value = []
 }
 
-function handleAddTask(task: { title: string; type: TaskType; mode: GoalMode; plannedMinutes?: number; description?: string }) {
-  addTask(task.title, task.type, task.mode, task.plannedMinutes, task.description)
+function handleAddTask(task: { title: string; type: TaskType; plannedMinutes?: number; description?: string }) {
+  addTask(task.title, task.type, task.plannedMinutes, task.description)
 }
 
 onMounted(async () => {

@@ -94,7 +94,6 @@ export async function saveGoal(goal: Goal): Promise<void> {
   await invoke('save_goal', {
     goal: {
       id: goal.id,
-      mode: goal.mode,
       topic: goal.topic,
       plannedMinutes: goal.plannedMinutes ?? null,
       startedAt: goal.startedAt,
@@ -117,7 +116,6 @@ export async function getActiveGoal(goalId: string): Promise<Goal | null> {
   if (!row) return null
   return {
     id: row.id,
-    mode: row.mode as Goal['mode'],
     topic: row.topic,
     plannedMinutes: row.plannedMinutes ?? undefined,
     startedAt: row.startedAt,

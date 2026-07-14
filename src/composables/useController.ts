@@ -1,7 +1,7 @@
 import { ref, onUnmounted } from 'vue'
 import { AppController } from '../controller'
 import type { UIMessage, ControllerState } from '../controller'
-import type { Mode, Goal, PersonaConfig, LLMConfig, CompanionConfig, DailySummary, Task, TaskType, GoalMode, TaskSuggestion } from '../types'
+import type { Mode, Goal, PersonaConfig, LLMConfig, CompanionConfig, DailySummary, Task, TaskType, TaskSuggestion } from '../types'
 import { checkPhaseEnd } from '../state/pomodoro'
 
 // 单例
@@ -94,8 +94,8 @@ export function useController() {
     return c.listHistory(startDate, endDate)
   }
 
-  function addTask(title: string, type: TaskType, mode: GoalMode, plannedMinutes?: number, description?: string) {
-    c.addTask(title, type, mode, plannedMinutes, description)
+  function addTask(title: string, type: TaskType, plannedMinutes?: number, description?: string) {
+    c.addTask(title, type, plannedMinutes, description)
   }
 
   function removeTask(id: string) {

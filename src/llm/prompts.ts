@@ -7,7 +7,7 @@ export function buildSystemPrompt(persona: PersonaConfig, _mode: Mode, goal: Goa
     `你的名字是「${persona.characterName}」，这个软件叫「${persona.appName}」。`,
   ]
   if (goal) {
-    parts.push(`用户当前正在${goal.mode === 'study' ? '学习' : '工作'}：${goal.topic}。`)
+    parts.push(`用户当前正在专注：${goal.topic}。`)
     if (goal.plannedMinutes) {
       const elapsed = Math.floor((Date.now() - goal.startedAt) / 60000)
       parts.push(`计划 ${goal.plannedMinutes} 分钟，已进行 ${elapsed} 分钟。`)
@@ -24,7 +24,7 @@ export function buildSlackJudgePrompt(goal: Goal, win: ForegroundWindow): { syst
     system: '你是一个应用分类助手。判断给定应用是否与用户的学习/工作目标相关。只返回 JSON。',
     user: JSON.stringify({
       instruction: '判断这个应用是否与目标相关，返回 {"related": true/false, "reason": "简短理由"}',
-      goal: `${goal.mode === 'study' ? '学习' : '工作'}：${goal.topic}`,
+      goal: `专注：${goal.topic}`,
       processName: win.processName,
       windowTitle: win.windowTitle,
     }),
@@ -38,7 +38,7 @@ export function buildReminderPrompt(level: ReminderLevel, goal: Goal): { system:
     3: '严肃但关心，强调该回来了，一到两句话',
   }
   return {
-    system: `你是一个监督伙伴。用户在${goal.mode === 'study' ? '学习' : '工作'}${goal.topic}时摸鱼了。当前是第${level}级提醒，语气：${toneMap[level]}。只输出要说的话，不要加引号或前缀。`,
+    system: `你是一个监督伙伴。用户在专注${goal.topic}时摸鱼了。当前是第${level}级提醒，语气：${toneMap[level]}。只输出要说的话，不要加引号或前缀。`,
     user: '生成提醒话术。',
   }
 }

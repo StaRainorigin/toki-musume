@@ -1,4 +1,4 @@
-import type { Task, TaskType, GoalMode } from '../types'
+import type { Task, TaskType } from '../types'
 
 /**
  * 今日任务列表管理（内存存储）
@@ -10,7 +10,6 @@ export class TaskStore {
   addTask(
     title: string,
     type: TaskType,
-    mode: GoalMode,
     plannedMinutes?: number,
     description?: string,
   ): Task {
@@ -18,7 +17,6 @@ export class TaskStore {
       id: `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       title,
       type,
-      mode,
       status: 'pending',
       plannedMinutes: type === 'timed' ? plannedMinutes : undefined,
       completedMinutes: type === 'timed' ? 0 : undefined,
@@ -97,9 +95,9 @@ export class TaskStore {
   }
 
   /** 批量添加任务（AI 计划确认后） */
-  addBatch(tasks: Array<{ title: string; type: TaskType; mode: GoalMode; plannedMinutes?: number; description?: string }>): void {
+  addBatch(tasks: Array<{ title: string; type: TaskType; plannedMinutes?: number; description?: string }>): void {
     for (const t of tasks) {
-      this.addTask(t.title, t.type, t.mode, t.plannedMinutes, t.description)
+      this.addTask(t.title, t.type, t.plannedMinutes, t.description)
     }
   }
 

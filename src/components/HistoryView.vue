@@ -70,7 +70,7 @@ function selectSummary(date: string) {
         <h5>目标</h5>
         <ul>
           <li v-for="g in selected.goals" :key="g.topic">
-            {{ g.topic }} ({{ g.mode }}) - <Icon :icon="g.completed ? 'tabler:check' : 'tabler:x'" width="14" :class="g.completed ? 'check-icon' : 'x-icon'" /> {{ g.minutes }}m
+            {{ g.topic }} - <Icon :icon="g.completed ? 'tabler:check' : 'tabler:x'" width="14" :class="g.completed ? 'check-icon' : 'x-icon'" /> {{ g.minutes }}m
           </li>
         </ul>
         <p class="comment">{{ selected.comment }}</p>
