@@ -1,5 +1,5 @@
-// ===== 模式 =====
-export type Mode = 'idle' | 'companion' | 'study' | 'work' | 'rest'
+// ===== 模式（由番茄钟状态驱动，不需要手动切换）=====
+export type Mode = 'focus' | 'rest'
 
 // ===== 目标 =====
 export type GoalMode = 'study' | 'work'
@@ -139,7 +139,8 @@ export type ReminderLevel = 1 | 2 | 3
 
 // ===== 意图识别（对话场景）=====
 export type Intent =
-  | { type: 'switch_mode'; mode: Mode; topic?: string; plannedMinutes?: number }
+  | { type: 'start_task'; mode: GoalMode; topic: string; plannedMinutes?: number }
+  | { type: 'take_break' }
   | { type: 'sokai_yila'; minutes: number }
   | { type: 'end_goal' }
   | { type: 'summary'; range: 'daily' | 'weekly' }

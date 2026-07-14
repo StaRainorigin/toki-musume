@@ -22,15 +22,15 @@ describe('recoverState', () => {
     vi.mocked(readConfigFile).mockResolvedValue('{}')
   })
 
-  it('正常恢复 idle 状态', async () => {
+  it('正常恢复 rest 状态', async () => {
     vi.mocked(initDatabase).mockResolvedValue('')
     vi.mocked(getRuntimeState).mockResolvedValue({
-      mode: 'idle', activeGoalId: undefined,
+      mode: 'rest', activeGoalId: undefined,
       companionCooldownUntil: 0, lastSpokeAt: undefined,
     })
     vi.mocked(getAppProfiles).mockResolvedValue([])
     const result = await recoverState()
-    expect(result.modeMachine.mode).toBe('idle')
+    expect(result.modeMachine.mode).toBe('rest')
     expect(result.activeGoal).toBeNull()
     expect(result.needsGoalTimeoutPrompt).toBe(false)
   })
@@ -38,7 +38,7 @@ describe('recoverState', () => {
   it('有超时目标时提示', async () => {
     vi.mocked(initDatabase).mockResolvedValue('')
     vi.mocked(getRuntimeState).mockResolvedValue({
-      mode: 'study', activeGoalId: 'g1',
+      mode: 'focus', activeGoalId: 'g1',
       companionCooldownUntil: 0, lastSpokeAt: undefined,
     })
     vi.mocked(getActiveGoal).mockResolvedValue({

@@ -19,7 +19,8 @@ export class CompanionTriggerEngine {
   ) {}
 
   handleWindowSwitch(win: ForegroundWindow, mode: Mode): void {
-    if (mode !== 'companion' && mode !== 'idle') return
+    // 只在休息状态触发陪伴说话
+    if (mode !== 'rest') return
 
     const now = Date.now()
     for (const [proc, start] of this.activityStartAt) {

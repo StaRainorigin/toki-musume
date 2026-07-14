@@ -5,8 +5,8 @@ import type {
 } from './types'
 import { DEFAULT_PERSONA, DEFAULT_LLM_CONFIG, DEFAULT_COMPANION_CONFIG } from './config'
 import {
-  createInitialState, startGoal, endGoal, startRest, endRest,
-  enterCompanion, checkRestTimeout,
+  createInitialState, endGoal,
+  checkRestTimeout,
   type ModeMachineState,
 } from './state/mode-machine'
 import { WindowPoller } from './perception/poller'
@@ -94,6 +94,14 @@ export class AppController {
     return { needsGoalTimeoutPrompt: recovered.needsGoalTimeoutPrompt }
   }
 
+  /** 番茄钟状态驱动模式：focus → 'focus'，其他 → 'rest' */
+  private syncModeFromPomodoro(): void {
+    const newMode: Mode = this.pomodoro.phase === 'focus' ? 'focus' : 'rest'
+    if (this.modeMachine.mode !== newMode) {
+      this.modeMachine = { ...this.modeMachine, mode: newMode }
+    }
+  }
+
   private async handleWindowChange(win: ForegroundWindow): Promise<void> {
     const mode = this.modeMachine.mode
     const goal = this.modeMachine.activeGoal
@@ -135,7 +143,7 @@ export class AppController {
     }
 
     // 4. 陪伴监督：只在番茄钟专注阶段检测摸鱼
-    if ((mode === 'study' || mode === 'work') && goal && this.pomodoro.phase === 'focus') {
+    if (goal && this.pomodoro.phase === 'focus') {
       const listKind = this.profiles.lookup(win.processName, goal.topic)
       if (listKind === 'whitelist') {
         // 回到正事了，重置摸鱼状态
@@ -250,6 +258,7 @@ export class AppController {
       }
 
       this.pomodoro = startBreak(this.pomodoro)
+      this.syncModeFromPomodoro()
       await this.log({
         ts: now, type: 'pomodoro_focus_end', mode: this.modeMachine.mode,
         data: { focusMin, cycleCount: this.pomodoro.cycleCount },
@@ -258,6 +267,7 @@ export class AppController {
       // 休息结束 → 回到专注
       this.pushAssistant('休息好了吗？继续吧，加油～')
       this.pomodoro = startFocus(this.pomodoro)
+      this.syncModeFromPomodoro()
       await this.log({
         ts: now, type: 'pomodoro_break_end', mode: this.modeMachine.mode,
         data: { nextPhase: 'focus' },
@@ -274,6 +284,7 @@ export class AppController {
       return
     }
     this.pomodoro = startFocus(this.pomodoro)
+    this.syncModeFromPomodoro()
     this.pushAssistant(`好的！开始专注「${task.title}」，${this.pomodoro.focusMin} 分钟，加油哦～我会帮你看着的！`)
     this.emitState()
   }
@@ -281,6 +292,7 @@ export class AppController {
   /** 停止番茄钟 */
   pausePomodoro(): void {
     this.pomodoro = stopPomodoro(this.pomodoro)
+    this.syncModeFromPomodoro()
     this.pushAssistant('好的，先停一下。准备好了随时继续～')
     this.emitState()
   }
@@ -292,9 +304,11 @@ export class AppController {
       this.taskStore.addFocusMinutesToActive(elapsedMin)
       this.pomodoro = completeFocus(this.pomodoro)
       this.pomodoro = startBreak(this.pomodoro)
+      this.syncModeFromPomodoro()
       this.pushAssistant(`这轮专注了 ${elapsedMin} 分钟，去休息一下吧～`)
     } else if (this.pomodoro.phase !== 'idle') {
       this.pomodoro = startFocus(this.pomodoro)
+      this.syncModeFromPomodoro()
       this.pushAssistant('休息够了吗？那继续吧～')
     }
     this.emitState()
@@ -330,6 +344,7 @@ export class AppController {
     // 如果当前任务完成了，停止番茄钟
     if (this.pomodoro.phase !== 'idle' && !this.taskStore.getActiveTask()) {
       this.pomodoro = stopPomodoro(this.pomodoro)
+      this.syncModeFromPomodoro()
     }
     this.emitState()
   }
@@ -337,11 +352,22 @@ export class AppController {
   setActiveTask(id: string): void {
     const task = this.taskStore.setActiveTask(id)
     if (task) {
+      // 创建/更新 goal 关联
+      const goal: Goal = {
+        id: task.id,
+        mode: task.mode,
+        topic: task.title,
+        plannedMinutes: task.plannedMinutes,
+        startedAt: task.startedAt ?? Date.now(),
+        status: 'active',
+      }
+      this.modeMachine = { ...this.modeMachine, mode: 'focus', activeGoal: goal }
       this.pushAssistant(`好的，开始「${task.title}」吧！我会帮你计时的～`)
-      // 如果在学习/工作模式且番茄钟空闲，自动开始专注
-      if ((this.modeMachine.mode === 'study' || this.modeMachine.mode === 'work') && this.pomodoro.phase === 'idle') {
+      // 自动开始番茄钟
+      if (this.pomodoro.phase === 'idle') {
         this.startPomodoro()
       }
+      this.judgeScheduler.startPeriodic(goal)
     }
     this.emitState()
   }
@@ -465,28 +491,22 @@ export class AppController {
     const intent = result.intent
     console.log('[DEBUG] Handling intent:', JSON.stringify(intent))
     switch (intent.type) {
-      case 'switch_mode':
-        if (intent.mode === 'companion') {
-          const r = enterCompanion(this.modeMachine)
-          if (r.ok) { this.modeMachine = r.state; await this.persistRuntimeState() }
-        } else if (intent.mode === 'study' || intent.mode === 'work') {
-          if (intent.topic) {
-            const r = startGoal(this.modeMachine, intent.mode, intent.topic, intent.plannedMinutes)
-            if (r.ok) {
-              this.modeMachine = r.state
-              await saveGoal(r.state.activeGoal!)
-              await this.log({
-                ts: Date.now(), type: 'goal_started', mode: this.modeMachine.mode,
-                goalId: r.state.activeGoal!.id, data: { goal: r.state.activeGoal },
-              })
-              await this.persistRuntimeState()
-            }
-          }
-        } else if (intent.mode === 'rest') {
-          const r = startRest(this.modeMachine, intent.plannedMinutes ?? 15)
-          if (r.ok) { this.modeMachine = r.state; await this.persistRuntimeState() }
-        }
+      case 'start_task': {
+        // 创建任务并开始专注
+        const task = this.taskStore.addTask(
+          intent.topic, 'timed', intent.mode,
+          intent.plannedMinutes ?? 60,
+        )
+        this.setActiveTask(task.id)
         break
+      }
+      case 'take_break': {
+        this.pomodoro = stopPomodoro(this.pomodoro)
+        this.syncModeFromPomodoro()
+        this.pushAssistant('好的，休息一下吧～')
+        await this.persistRuntimeState()
+        break
+      }
       case 'sokai_yila':
         this.reminderState = handleSokai(this.reminderState, intent.minutes)
         await this.log({
@@ -515,63 +535,10 @@ export class AppController {
     }
   }
 
-  async switchMode(m: 'companion' | 'study' | 'work' | 'rest'): Promise<void> {
-    // 如果在休息模式，先结束休息
-    if (this.modeMachine.mode === 'rest' && m !== 'rest') {
-      const restEnd = endRest(this.modeMachine)
-      if (restEnd.ok) {
-        this.modeMachine = restEnd.state
-        this.pushSystem('休息结束')
-      }
-    }
-
-    // 如果有活跃目标且切换到别的模式，先自动结束当前目标
-    if (this.modeMachine.activeGoal && this.modeMachine.mode !== m) {
-      const r = endGoal(this.modeMachine)
-      if (r.ok) {
-        this.modeMachine = r.state
-        const endedGoal = (r.event as unknown as { goal: Goal }).goal
-        await saveGoal(endedGoal)
-      }
-    }
-    this.judgeScheduler.stopPeriodic()
-    // 切到休息/陪伴时停番茄钟
-    if (m === 'rest' || m === 'companion') {
-      this.pomodoro = stopPomodoro(this.pomodoro)
-    }
-
-    if (m === 'companion') {
-      const r = enterCompanion(this.modeMachine)
-      if (r.ok) this.modeMachine = r.state
-    } else if (m === 'rest') {
-      const r = startRest(this.modeMachine, 15)
-      if (r.ok) this.modeMachine = r.state
-    } else {
-      const r = startGoal(this.modeMachine, m, '未命名目标')
-      if (r.ok) {
-        this.modeMachine = r.state
-        await saveGoal(r.state.activeGoal!)
-        await this.log({
-          ts: Date.now(), type: 'goal_started', mode: this.modeMachine.mode,
-          goalId: r.state.activeGoal!.id, data: { goal: r.state.activeGoal },
-        })
-        // 启动 LLM 定期检查
-        this.judgeScheduler.startPeriodic(r.state.activeGoal)
-        // 如果有活跃任务，自动开始番茄钟
-        const activeTask = this.taskStore.getActiveTask()
-        if (activeTask && this.pomodoro.phase === 'idle') {
-          this.startPomodoro()
-        }
-      }
-    }
-    await this.persistRuntimeState()
-    this.pushSystem(`切换到 ${m} 模式`)
-    this.emitState()
-  }
-
   async endActiveGoal(): Promise<void> {
     this.judgeScheduler.stopPeriodic()
     this.pomodoro = stopPomodoro(this.pomodoro)
+    this.syncModeFromPomodoro()
     const r = endGoal(this.modeMachine)
     if (r.ok) {
       this.modeMachine = r.state

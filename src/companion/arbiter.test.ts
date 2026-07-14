@@ -32,7 +32,7 @@ describe('arbiter', () => {
   it('非陪伴模式不说话', () => {
     const decision = arbitrate(
       { type: 'idle_started', idleMinutes: 5 },
-      { mode: 'study', lastSpokeAt: 0, cooldownUntil: 0, config, isIdle: false },
+      { mode: 'focus', lastSpokeAt: 0, cooldownUntil: 0, config, isIdle: false },
     )
     expect(decision.shouldSpeak).toBe(false)
   })
@@ -40,7 +40,7 @@ describe('arbiter', () => {
   it('冷却中不说话', () => {
     const decision = arbitrate(
       { type: 'idle_started', idleMinutes: 5 },
-      { mode: 'companion', lastSpokeAt: 0, cooldownUntil: Date.now() + 60000, config, isIdle: false },
+      { mode: 'rest', lastSpokeAt: 0, cooldownUntil: Date.now() + 60000, config, isIdle: false },
     )
     expect(decision.shouldSpeak).toBe(false)
   })
@@ -48,7 +48,7 @@ describe('arbiter', () => {
   it('陪伴模式 + 概率通过 → 说话', () => {
     const decision = arbitrate(
       { type: 'idle_started', idleMinutes: 5 },
-      { mode: 'companion', lastSpokeAt: 0, cooldownUntil: 0, config, isIdle: true, idleMinutes: 5 },
+      { mode: 'rest', lastSpokeAt: 0, cooldownUntil: 0, config, isIdle: true, idleMinutes: 5 },
     )
     expect(decision.shouldSpeak).toBe(true)
   })
@@ -56,7 +56,7 @@ describe('arbiter', () => {
   it('disabled 时不说话', () => {
     const decision = arbitrate(
       { type: 'idle_started', idleMinutes: 5 },
-      { mode: 'companion', lastSpokeAt: 0, cooldownUntil: 0, config: { ...config, enabled: false }, isIdle: false },
+      { mode: 'rest', lastSpokeAt: 0, cooldownUntil: 0, config: { ...config, enabled: false }, isIdle: false },
     )
     expect(decision.shouldSpeak).toBe(false)
   })

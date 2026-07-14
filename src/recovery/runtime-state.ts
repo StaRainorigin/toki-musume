@@ -87,7 +87,7 @@ export async function recoverState(): Promise<RecoveredState> {
   // 启动时回到 idle
   const modeMachine: ModeMachineState = {
     ...createInitialState(),
-    mode: 'idle',
+    mode: 'rest',
     activeGoal: null,
     restReturnMode: null,
     restUntil: null,

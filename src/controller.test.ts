@@ -64,44 +64,25 @@ describe('AppController 端到端逻辑测试', () => {
     expect(msgCb).toHaveBeenCalledWith(expect.objectContaining({ content: '测试娘 已启动' }))
   })
 
-  it('switchMode 从 idle 切到 study，模式变为 study', async () => {
+  it('setActiveTask 开始任务后进入专注模式', async () => {
     await controller.init()
-    await controller.switchMode('study')
+    const task = controller.taskStore.addTask('学React', 'timed', 'study', 60)
+    controller.setActiveTask(task.id)
     const stateCb = controller.onStateChange as unknown as (s: { mode: string; activeGoal: { topic: string } | null }) => void
     const lastCall = vi.mocked(stateCb).mock.calls[vi.mocked(stateCb).mock.calls.length - 1][0]
-    expect(lastCall.mode).toBe('study')
+    expect(lastCall.mode).toBe('focus')
     expect(lastCall.activeGoal).not.toBeNull()
-    expect(lastCall.activeGoal!.topic).toBe('未命名目标')
+    expect(lastCall.activeGoal!.topic).toBe('学React')
   })
 
-  it('switchMode 从 study 切到 rest，先自动结束目标再进入休息', async () => {
+  it('pausePomodoro 停止专注回到休息', async () => {
     await controller.init()
-    await controller.switchMode('study')
-    await controller.switchMode('rest')
-    const stateCb = controller.onStateChange as unknown as (s: { mode: string; activeGoal: unknown }) => void
+    const task = controller.taskStore.addTask('学React', 'timed', 'study', 60)
+    controller.setActiveTask(task.id)
+    controller.pausePomodoro()
+    const stateCb = controller.onStateChange as unknown as (s: { mode: string }) => void
     const lastCall = vi.mocked(stateCb).mock.calls[vi.mocked(stateCb).mock.calls.length - 1][0]
     expect(lastCall.mode).toBe('rest')
-    expect(lastCall.activeGoal).toBeNull()
-  })
-
-  it('switchMode 从 study 切到 companion，自动结束目标', async () => {
-    await controller.init()
-    await controller.switchMode('study')
-    await controller.switchMode('companion')
-    const stateCb = controller.onStateChange as unknown as (s: { mode: string; activeGoal: unknown }) => void
-    const lastCall = vi.mocked(stateCb).mock.calls[vi.mocked(stateCb).mock.calls.length - 1][0]
-    expect(lastCall.mode).toBe('companion')
-    expect(lastCall.activeGoal).toBeNull()
-  })
-
-  it('switchMode 从 study 切到 work，自动结束旧目标再开始新目标', async () => {
-    await controller.init()
-    await controller.switchMode('study')
-    await controller.switchMode('work')
-    const stateCb = controller.onStateChange as unknown as (s: { mode: string; activeGoal: { topic: string } | null }) => void
-    const lastCall = vi.mocked(stateCb).mock.calls[vi.mocked(stateCb).mock.calls.length - 1][0]
-    expect(lastCall.mode).toBe('work')
-    expect(lastCall.activeGoal!.topic).toBe('未命名目标')
   })
 
   it('updateConfig 保存配置到 config.json', async () => {
@@ -136,9 +117,10 @@ describe('AppController 端到端逻辑测试', () => {
 
   it('debugGetSnapshot 返回正确状态', async () => {
     await controller.init()
-    await controller.switchMode('study')
+    const task = controller.taskStore.addTask('学React', 'timed', 'study', 60)
+    controller.setActiveTask(task.id)
     const snapshot = await controller.debugGetSnapshot()
-    expect(snapshot.mode).toBe('study')
+    expect(snapshot.mode).toBe('focus')
     expect(snapshot.activeGoal).not.toBeNull()
     expect(snapshot.slackCount).toBe(0)
     expect(snapshot.profiles).toBeDefined()

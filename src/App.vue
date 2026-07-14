@@ -19,7 +19,7 @@ const {
   mode, activeGoal, slackCount, messages,
   persona, llmConfig, companionConfig,
   tasks, pomodoroDisplay,
-  init, sendMessage, switchMode, updateConfig, destroy,
+  init, sendMessage, updateConfig, destroy,
   addTask, removeTask, completeTask, setActiveTask,
   startPomodoro, pausePomodoro, skipPhase,
   generateDailyPlan, confirmDailyPlan,
@@ -134,9 +134,9 @@ onUnmounted(() => {
 
     <MessageInput @send="sendMessage" />
 
-    <!-- 番茄钟（学习/工作模式时显示） -->
+    <!-- 番茄钟（有活跃任务时显示） -->
     <PomodoroTimer
-      v-if="mode === 'study' || mode === 'work'"
+      v-if="pomodoroDisplay.phase !== 'idle' || activeGoal"
       :phase="pomodoroDisplay.phase"
       :label="pomodoroDisplay.label"
       :remaining-sec="pomodoroDisplay.remainingSec"
@@ -177,7 +177,6 @@ onUnmounted(() => {
     <StatusBar
       :mode="mode"
       :active-goal="activeGoal"
-      @switch-mode="switchMode"
     />
 
     <TodaySummary
@@ -219,16 +218,10 @@ onUnmounted(() => {
   transition: background 0.5s ease;
 }
 
-.app--study {
-  background: linear-gradient(160deg, var(--color-bg) 0%, var(--color-study-light) 50%, var(--color-bg-hover) 100%);
-}
-.app--work {
-  background: linear-gradient(160deg, var(--color-bg) 0%, var(--color-work-light) 50%, var(--color-bg-hover) 100%);
-}
 .app--rest {
   background: linear-gradient(160deg, var(--color-bg) 0%, var(--color-rest-light) 50%, var(--color-bg-hover) 100%);
 }
-.app--companion {
+.app--focus {
   background: linear-gradient(160deg, var(--color-bg) 0%, var(--color-accent-light) 50%, var(--color-bg-hover) 100%);
 }
 

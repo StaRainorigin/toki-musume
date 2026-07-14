@@ -3,8 +3,8 @@ import type { Mode, Goal, LogEvent, AppProfile } from './types'
 
 describe('types', () => {
   it('Mode 类型可用', () => {
-    const m: Mode = 'study'
-    expect(m).toBe('study')
+    const m: Mode = 'focus'
+    expect(m).toBe('focus')
   })
 
   it('Goal 类型可用', () => {
@@ -17,7 +17,7 @@ describe('types', () => {
 
   it('LogEvent 类型可用', () => {
     const e: LogEvent = {
-      ts: Date.now(), type: 'window_switch', mode: 'study',
+      ts: Date.now(), type: 'window_switch', mode: 'focus',
       processName: 'Code.exe', windowTitle: 'main.ts',
     }
     expect(e.type).toBe('window_switch')

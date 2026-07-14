@@ -8,7 +8,7 @@ import { checkPhaseEnd } from '../state/pomodoro'
 let controller: AppController | null = null
 
 // 响应式状态
-const mode = ref<Mode>('idle')
+const mode = ref<Mode>('rest')
 const activeGoal = ref<Goal | null>(null)
 const slackCount = ref(0)
 const messages = ref<UIMessage[]>([])
@@ -83,10 +83,6 @@ export function useController() {
     c.handleUserMessage(text)
   }
 
-  async function switchMode(m: 'companion' | 'study' | 'work' | 'rest') {
-    await c.switchMode(m)
-  }
-
   function updateConfig(p: PersonaConfig, l: LLMConfig, cc: CompanionConfig) {
     persona.value = { ...p }
     llmConfig.value = { ...l }
@@ -152,7 +148,6 @@ export function useController() {
     // 方法
     init,
     sendMessage,
-    switchMode,
     updateConfig,
     listHistory,
     addTask,

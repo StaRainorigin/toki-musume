@@ -31,7 +31,7 @@ describe('tauri-bridge', () => {
     await appendLog({
       ts: 1000,
       type: 'window_switch',
-      mode: 'study',
+      mode: 'focus',
       processName: 'Code.exe',
       windowTitle: 'main.ts',
     })
@@ -39,7 +39,7 @@ describe('tauri-bridge', () => {
       event: {
         ts: 1000,
         type: 'window_switch',
-        mode: 'study',
+        mode: 'focus',
         goalId: undefined,
         processName: 'Code.exe',
         windowTitle: 'main.ts',

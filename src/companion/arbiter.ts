@@ -18,8 +18,9 @@ export type ArbiterDecision =
   | { shouldSpeak: false; reason: string }
 
 export function arbitrate(event: CompanionEvent, ctx: ArbiterContext): ArbiterDecision {
-  if (ctx.mode !== 'companion' && ctx.mode !== 'idle') {
-    return { shouldSpeak: false, reason: '当前模式不触发陪伴说话' }
+  // 只在休息/陪伴状态触发主动说话，专注时不打扰
+  if (ctx.mode !== 'rest') {
+    return { shouldSpeak: false, reason: '专注中不打扰' }
   }
   if (!ctx.config.enabled) {
     return { shouldSpeak: false, reason: '陪伴说话已关闭' }

@@ -10,7 +10,7 @@ const goal: Goal = {
 
 describe('prompts', () => {
   it('system prompt 含角色名', () => {
-    const p = buildSystemPrompt(persona, 'study', goal)
+    const p = buildSystemPrompt(persona, 'focus', goal)
     expect(p).toContain('小时')
     expect(p).toContain('toki-musume')
     expect(p).toContain('React')

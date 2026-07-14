@@ -1,7 +1,7 @@
 import type { Goal, Mode, ReminderLevel, ForegroundWindow, PersonaConfig } from '../types'
 import { DEFAULT_PERSONALITY_PROMPT } from '../config'
 
-export function buildSystemPrompt(persona: PersonaConfig, mode: Mode, goal: Goal | null): string {
+export function buildSystemPrompt(persona: PersonaConfig, _mode: Mode, goal: Goal | null): string {
   const parts: string[] = [
     DEFAULT_PERSONALITY_PROMPT,
     `你的名字是「${persona.characterName}」，这个软件叫「${persona.appName}」。`,
@@ -13,8 +13,8 @@ export function buildSystemPrompt(persona: PersonaConfig, mode: Mode, goal: Goal
       parts.push(`计划 ${goal.plannedMinutes} 分钟，已进行 ${elapsed} 分钟。`)
     }
     parts.push('如果用户在摸鱼（与目标无关），你应该调侃后提醒他回到正事。')
-  } else if (mode === 'companion') {
-    parts.push('用户当前在陪伴模式，没有特定目标。自然闲聊即可，简短不啰嗦。')
+  } else {
+    parts.push('用户当前没有在专注，处于休息/陪伴状态。自然闲聊即可，简短不啰嗦。')
   }
   return parts.join('\n')
 }
@@ -67,15 +67,17 @@ export function buildChatPrompt(
   history: Array<{ role: 'user' | 'assistant'; content: string }>,
   userMessage: string,
 ): { system: string; user: string } {
-  const system = `你是一个桌面陪伴监督助手。用户跟你说话，你要回复。
+  const system = `你是一个桌面陪伴角色。用户跟你说话，你要用亲切自然的语气回复。
 同时分析用户的话是否包含以下意图之一：
-- switch_mode: 用户想切换模式（学习/工作/陪伴/休息），可能带 topic 和 plannedMinutes
+- start_task: 用户想开始一个学习/工作任务，提取 mode(study/work)、topic(任务标题)、plannedMinutes(计划分钟数，可选)
+- take_break: 用户想休息一下
 - sokai_yila: 用户在赖账（如"再看5分钟"），提取 minutes
 - end_goal: 用户说结束/学完了
 - summary: 用户想看总结（daily/weekly）
 
 返回 JSON：{"reply": "你的回复", "intent": {...} | null}
-intent 格式示例：{"type":"switch_mode","mode":"study","topic":"React","plannedMinutes":120}
+intent 格式示例：{"type":"start_task","mode":"study","topic":"React","plannedMinutes":120}
+或 {"type":"take_break"}
 或 {"type":"sokai_yila","minutes":5}
 或 {"type":"end_goal"}
 或 {"type":"summary","range":"daily"}
