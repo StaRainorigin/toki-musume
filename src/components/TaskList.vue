@@ -5,7 +5,6 @@ import type { Task, TaskType, GoalMode } from '../types'
 
 const props = defineProps<{
   tasks: Task[]
-  pomodoroPhase: string
 }>()
 
 const emit = defineEmits<{

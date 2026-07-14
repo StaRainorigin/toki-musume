@@ -50,7 +50,7 @@ const progressDeg = computed(() => props.progress * 360)
       </button>
       <template v-else>
         <button class="timer-btn pause" @click="emit('pause')">
-          <Icon icon="tabler:player-pause-filled" width="18" /> 暂停
+          <Icon icon="tabler:player-stop-filled" width="18" /> 停止
         </button>
         <button class="timer-btn skip" @click="emit('skip')">
           <Icon icon="tabler:player-skip-forward-filled" width="18" /> 跳过

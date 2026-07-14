@@ -205,6 +205,11 @@ export class AppController {
   // ===== 番茄钟 =====
 
   /** 检查番茄钟阶段是否结束，自动切换 */
+  /** 检查番茄钟阶段是否结束，自动切换（公开，供定时器调用） */
+  async checkPomodoroPhasePublic(): Promise<void> {
+    return this.checkPomodoroPhase()
+  }
+
   private async checkPomodoroPhase(): Promise<void> {
     if (this.pomodoro.phase === 'idle') return
     const now = Date.now()
@@ -216,6 +221,13 @@ export class AppController {
       const completedTask = this.taskStore.addFocusMinutesToActive(focusMin)
       this.pomodoro = completeFocus(this.pomodoro)
       this.pushSystem(`专注结束！完成了 ${focusMin} 分钟。${completedTask?.status === 'completed' ? '🎉 任务完成！' : '休息一下吧～'}`)
+      if (completedTask?.status === 'completed') {
+        await this.log({
+          ts: now, type: 'task_completed', mode: this.modeMachine.mode,
+          note: `任务完成：${completedTask.title}`,
+          data: { taskId: completedTask.id, completedMinutes: completedTask.completedMinutes },
+        })
+      }
       this.pomodoro = startBreak(this.pomodoro)
       await this.log({
         ts: now, type: 'pomodoro_focus_end', mode: this.modeMachine.mode,
@@ -255,11 +267,12 @@ export class AppController {
   /** 跳过当前阶段 */
   skipPhase(): void {
     if (this.pomodoro.phase === 'focus') {
-      const focusMin = this.pomodoro.phaseDurationMin
-      this.taskStore.addFocusMinutesToActive(focusMin)
+      // 只累加实际经过的分钟数（向上取整，至少1分钟）
+      const elapsedMin = Math.max(1, Math.ceil((Date.now() - this.pomodoro.phaseStartedAt) / 60000))
+      this.taskStore.addFocusMinutesToActive(elapsedMin)
       this.pomodoro = completeFocus(this.pomodoro)
       this.pomodoro = startBreak(this.pomodoro)
-      this.pushSystem('跳过专注，进入休息')
+      this.pushSystem(`跳过专注（计 ${elapsedMin} 分钟），进入休息`)
     } else if (this.pomodoro.phase !== 'idle') {
       this.pomodoro = startFocus(this.pomodoro)
       this.pushSystem('跳过休息，继续专注')
@@ -491,6 +504,10 @@ export class AppController {
       }
     }
     this.judgeScheduler.stopPeriodic()
+    // 切到休息/陪伴时停番茄钟
+    if (m === 'rest' || m === 'companion') {
+      this.pomodoro = stopPomodoro(this.pomodoro)
+    }
 
     if (m === 'companion') {
       const r = enterCompanion(this.modeMachine)

@@ -1,7 +1,8 @@
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { AppController } from '../controller'
 import type { UIMessage, ControllerState } from '../controller'
 import type { Mode, Goal, PersonaConfig, LLMConfig, CompanionConfig, DailySummary, Task, TaskType, GoalMode, TaskSuggestion } from '../types'
+import { checkPhaseEnd } from '../state/pomodoro'
 
 // 单例
 let controller: AppController | null = null
@@ -51,8 +52,32 @@ export function useController() {
     persona.value = { ...c.persona }
     llmConfig.value = { ...c.llmConfig }
     companionConfig.value = { ...c.companionConfig }
+    // 启动番茄钟 1 秒定时器
+    startPomodoroTick()
     return result
   }
+
+  let pomodoroTickId: number | null = null
+  function startPomodoroTick() {
+    if (pomodoroTickId !== null) return
+    pomodoroTickId = window.setInterval(() => {
+      const display = c.getPomodoroDisplay()
+      pomodoroDisplay.value = display
+      // 如果阶段结束，触发检查（控制器内部会处理切换）
+      if (display.phase !== 'idle' && checkPhaseEnd(c.pomodoro, Date.now())) {
+        c.checkPomodoroPhasePublic()
+      }
+      // 同步任务状态（可能在定时器中自动完成）
+      tasks.value = [...c.taskStore.getTodayTasks()]
+    }, 1000)
+  }
+
+  onUnmounted(() => {
+    if (pomodoroTickId !== null) {
+      clearInterval(pomodoroTickId)
+      pomodoroTickId = null
+    }
+  })
 
   function sendMessage(text: string) {
     c.handleUserMessage(text)

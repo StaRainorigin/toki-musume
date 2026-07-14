@@ -156,7 +156,6 @@ onUnmounted(() => {
     <!-- 任务列表 -->
     <TaskList
       :tasks="tasks"
-      :pomodoro-phase="pomodoroDisplay.phase"
       @add-task="handleAddTask"
       @remove-task="removeTask"
       @complete-task="completeTask"
