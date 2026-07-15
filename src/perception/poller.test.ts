@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../tauri-bridge', () => ({
   getForegroundWindow: vi.fn(),
   getIdleMs: vi.fn(),
+  listenForegroundWindowChanged: vi.fn().mockResolvedValue(() => {}),
 }))
 
 import { getForegroundWindow } from '../tauri-bridge'
@@ -15,34 +16,20 @@ describe('WindowPoller', () => {
     vi.useFakeTimers()
   })
 
-  it('窗口变化时触发回调', async () => {
-    vi.mocked(getForegroundWindow)
-      .mockResolvedValueOnce({ processName: 'A.exe', windowTitle: 'A', pid: 1 })
-      .mockResolvedValueOnce({ processName: 'B.exe', windowTitle: 'B', pid: 2 })
-
+  it('forcePoll 获取窗口并更新', async () => {
+    vi.mocked(getForegroundWindow).mockResolvedValue({ processName: 'A.exe', windowTitle: 'A', pid: 1 })
     const poller = new WindowPoller()
-    const changes: string[] = []
-    poller.start((win) => changes.push(win.processName), 1)
-
-    await vi.advanceTimersByTimeAsync(1100)
-    await vi.advanceTimersByTimeAsync(1100)
-    poller.stop()
-
-    expect(changes).toEqual(['A.exe', 'B.exe'])
+    const win = await poller.forcePoll()
+    expect(win?.processName).toBe('A.exe')
+    expect(poller.getLastWindow()?.processName).toBe('A.exe')
   })
 
-  it('窗口未变化不触发', async () => {
-    vi.mocked(getForegroundWindow).mockResolvedValue({ processName: 'A.exe', windowTitle: 'A', pid: 1 })
-
+  it('forcePoll 返回 null 时不更新', async () => {
+    vi.mocked(getForegroundWindow).mockResolvedValue(null)
     const poller = new WindowPoller()
-    const changes: string[] = []
-    poller.start((win) => changes.push(win.processName), 1)
-
-    await vi.advanceTimersByTimeAsync(1100)
-    await vi.advanceTimersByTimeAsync(1100)
-    poller.stop()
-
-    expect(changes).toEqual(['A.exe'])
+    const win = await poller.forcePoll()
+    expect(win).toBeNull()
+    expect(poller.getLastWindow()).toBeNull()
   })
 })
 

@@ -25,6 +25,16 @@ fn get_idle_ms() -> u64 {
 }
 
 #[tauri::command]
+fn start_window_hook(app: tauri::AppHandle) -> Result<(), String> {
+    winapi::start_foreground_hook(app)
+}
+
+#[tauri::command]
+fn stop_window_hook() -> Result<(), String> {
+    winapi::stop_foreground_hook()
+}
+
+#[tauri::command]
 fn init_database(app: tauri::AppHandle) -> Result<String, String> {
     let app_dir = get_app_data_dir()?;
     std::fs::create_dir_all(&app_dir)
@@ -147,11 +157,15 @@ pub fn run() {
                     _ => {}
                 })
                 .build(app)?;
+            // 启动窗口事件钩子
+            winapi::start_foreground_hook(app.handle().clone())?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             get_foreground_window,
             get_idle_ms,
+            start_window_hook,
+            stop_window_hook,
             init_database,
             append_log,
             read_logs,

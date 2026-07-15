@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import type { ForegroundWindow, LogEvent, AppProfile, Goal, RuntimeState, SlackJudgeResult } from './types'
 
 // ===== 前台窗口与空闲 =====
@@ -8,6 +9,15 @@ export async function getForegroundWindow(): Promise<ForegroundWindow | null> {
 
 export async function getIdleMs(): Promise<number> {
   return invoke<number>('get_idle_ms')
+}
+
+/** 监听前台窗口切换事件（由 Rust SetWinEventHook 发出） */
+export async function listenForegroundWindowChanged(cb: (win: ForegroundWindow) => void): Promise<UnlistenFn> {
+  return listen<ForegroundWindow>('foreground_window_changed', (event) => {
+    if (event.payload) {
+      cb(event.payload)
+    }
+  })
 }
 
 // ===== 数据库初始化 =====

@@ -87,7 +87,7 @@ export class AppController {
     this.pushSystem(`${this.persona.characterName} 已启动`)
     this.emitState()
 
-    this.poller.start((win) => this.handleWindowChange(win))
+    await this.poller.start((win) => this.handleWindowChange(win))
     this.triggerEngine.startFallbackTimer(this.companionConfig.fallbackIntervalMinutes)
     this.scheduler.start()
 
