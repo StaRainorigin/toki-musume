@@ -4,6 +4,7 @@ vi.mock('../tauri-bridge', () => ({
   getForegroundWindow: vi.fn(),
   getIdleMs: vi.fn(),
   listenForegroundWindowChanged: vi.fn().mockResolvedValue(() => {}),
+  captureAndOcr: vi.fn().mockResolvedValue(''),
 }))
 
 import { getForegroundWindow } from '../tauri-bridge'

@@ -106,6 +106,166 @@ pub fn get_idle_ms() -> u64 {
     }
 }
 
+// ===== 截屏 + OCR =====
+
+/// 截取前台窗口并 OCR，返回识别到的文字
+pub fn capture_and_ocr() -> Result<String, String> {
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd.0.is_null() {
+            return Err("无前台窗口".to_string());
+        }
+
+        // 获取窗口区域
+        let mut rect = windows::Win32::Foundation::RECT::default();
+        windows::Win32::UI::WindowsAndMessaging::GetWindowRect(hwnd, &mut rect)
+            .map_err(|e| format!("GetWindowRect 失败: {}", e))?;
+
+        let width = (rect.right - rect.left).max(1) as usize;
+        let height = (rect.bottom - rect.top).max(1) as usize;
+
+        // 截屏
+        let png_bytes = capture_region(rect.left, rect.top, width, height)?;
+
+        // OCR
+        ocr_png(&png_bytes)
+    }
+}
+
+/// 截取屏幕指定区域，返回 PNG bytes
+fn capture_region(x: i32, y: i32, width: usize, height: usize) -> Result<Vec<u8>, String> {
+    use windows::Win32::Graphics::Gdi::*;
+    use windows::Win32::Foundation::HWND;
+
+    unsafe {
+        let hdc_screen = GetDC(HWND::default());
+        if hdc_screen.is_invalid() {
+            return Err("GetDC 失败".to_string());
+        }
+
+        let hdc_mem = CreateCompatibleDC(hdc_screen);
+        if hdc_mem.is_invalid() {
+            ReleaseDC(HWND::default(), hdc_screen);
+            return Err("CreateCompatibleDC 失败".to_string());
+        }
+
+        let hbitmap = CreateCompatibleBitmap(hdc_screen, width as i32, height as i32);
+        if hbitmap.is_invalid() {
+            DeleteDC(hdc_mem);
+            ReleaseDC(HWND::default(), hdc_screen);
+            return Err("CreateCompatibleBitmap 失败".to_string());
+        }
+
+        let old_obj = SelectObject(hdc_mem, hbitmap);
+
+        // 截图
+        let ok = BitBlt(hdc_mem, 0, 0, width as i32, height as i32, hdc_screen, x, y, SRCCOPY);
+        if ok.is_err() {
+            SelectObject(hdc_mem, old_obj);
+            DeleteObject(hbitmap);
+            DeleteDC(hdc_mem);
+            ReleaseDC(HWND::default(), hdc_screen);
+            return Err("BitBlt 失败".to_string());
+        }
+
+        // 获取像素数据
+        let mut bmi = BITMAPINFO {
+            bmiHeader: BITMAPINFOHEADER {
+                biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+                biWidth: width as i32,
+                biHeight: -(height as i32), // 负值 = top-down
+                biPlanes: 1,
+                biBitCount: 32,
+                biCompression: 0, // BI_RGB
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let mut pixels = vec![0u8; width * height * 4];
+        let result = GetDIBits(hdc_mem, hbitmap, 0, height as u32, Some(pixels.as_mut_ptr() as *mut _), &mut bmi, DIB_RGB_COLORS);
+
+        // 清理 GDI 资源
+        SelectObject(hdc_mem, old_obj);
+        DeleteObject(hbitmap);
+        DeleteDC(hdc_mem);
+        ReleaseDC(HWND::default(), hdc_screen);
+
+        if result == 0 {
+            return Err("GetDIBits 失败".to_string());
+        }
+
+        // 转换 BGRA → RGBA 并编码为 PNG
+        let mut rgba = vec![0u8; width * height * 4];
+        for i in (0..pixels.len()).step_by(4) {
+            rgba[i] = pixels[i + 2];     // R
+            rgba[i + 1] = pixels[i + 1]; // G
+            rgba[i + 2] = pixels[i];     // B
+            rgba[i + 3] = pixels[i + 3]; // A
+        }
+
+        let img = image::RgbaImage::from_raw(width as u32, height as u32, rgba)
+            .ok_or("创建图像失败")?;
+
+        let mut png_buf = Vec::new();
+        img.write_to(&mut std::io::Cursor::new(&mut png_buf), image::ImageFormat::Png)
+            .map_err(|e| format!("PNG 编码失败: {}", e))?;
+
+        Ok(png_buf)
+    }
+}
+
+/// 用 WinRT OCR 识别 PNG 图片中的文字
+fn ocr_png(png_bytes: &[u8]) -> Result<String, String> {
+    use windows::Media::Ocr::OcrEngine;
+    use windows::Graphics::Imaging::BitmapDecoder;
+
+    // 创建内存流
+    let stream = windows::Storage::Streams::InMemoryRandomAccessStream::new()
+        .map_err(|e| format!("创建流失败: {}", e))?;
+
+    let writer = windows::Storage::Streams::DataWriter::CreateDataWriter(&stream)
+        .map_err(|e| format!("创建 DataWriter 失败: {}", e))?;
+    writer.WriteBytes(png_bytes)
+        .map_err(|e| format!("写入字节失败: {}", e))?;
+    writer.StoreAsync()
+        .map_err(|e| format!("StoreAsync 失败: {}", e))?
+        .get()
+        .map_err(|e| format!("StoreAsync get 失败: {}", e))?;
+    writer.FlushAsync()
+        .map_err(|e| format!("FlushAsync 失败: {}", e))?
+        .get()
+        .map_err(|e| format!("FlushAsync get 失败: {}", e))?;
+    stream.Seek(0)
+        .map_err(|e| format!("Seek 失败: {}", e))?;
+
+    // 解码图片
+    let decoder = BitmapDecoder::CreateAsync(&stream)
+        .map_err(|e| format!("BitmapDecoder 失败: {}", e))?
+        .get()
+        .map_err(|e| format!("Decoder get 失败: {}", e))?;
+
+    let bitmap = decoder.GetSoftwareBitmapAsync()
+        .map_err(|e| format!("GetSoftwareBitmap 失败: {}", e))?
+        .get()
+        .map_err(|e| format!("Bitmap get 失败: {}", e))?;
+
+    // 创建 OCR 引擎（使用系统默认语言）
+    let engine = OcrEngine::TryCreateFromUserProfileLanguages()
+        .map_err(|e| format!("创建 OcrEngine 失败: {}", e))?;
+
+    // 识别
+    let result = engine.RecognizeAsync(&bitmap)
+        .map_err(|e| format!("RecognizeAsync 失败: {}", e))?
+        .get()
+        .map_err(|e| format!("Recognize get 失败: {}", e))?;
+
+    let text = result.Text()
+        .map_err(|e| format!("获取文本失败: {}", e))?;
+
+    Ok(text.to_string())
+}
+
 // ===== SetWinEventHook 事件钩子 =====
 
 static HOOK_THREAD_ID: AtomicUsize = AtomicUsize::new(0);

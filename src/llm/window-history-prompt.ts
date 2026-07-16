@@ -7,6 +7,7 @@ import type { WindowRecord } from '../perception/window-history'
 export function buildWindowHistoryJudgePrompt(
   goal: Goal,
   records: WindowRecord[],
+  ocrText?: string,
 ): { system: string; user: string } {
   const system = `你是一个桌面活动监督助手。用户正在专注做：${goal.topic}。
 判断用户最近的窗口活动是否和这个任务相关。
@@ -34,7 +35,7 @@ export function buildWindowHistoryJudgePrompt(
     return `${i + 1}. [${sec}秒] ${r.processName} — ${r.windowTitle}`
   }).join('\n')
 
-  const user = `任务：${goal.topic}\n\n窗口历史：\n${recordsText}`
+  const user = `任务：${goal.topic}\n\n窗口历史：\n${recordsText}${ocrText ? `\n\n当前屏幕内容摘要：${ocrText}` : ''}`
 
   return { system, user }
 }

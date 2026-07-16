@@ -2,6 +2,7 @@ import type { LLMClient } from '../llm/client'
 import type { Goal } from '../types'
 import type { WindowHistoryTracker, WindowRecord } from './window-history'
 import { buildWindowHistoryJudgePrompt, type WindowJudgeResult } from '../llm/window-history-prompt'
+import { captureAndOcr } from '../tauri-bridge'
 
 /**
  * 定期 LLM 窗口历史检查器
@@ -74,6 +75,17 @@ export class WindowJudgeScheduler {
     return this.lastCheckAt
   }
 
+  private lastOcrAt = 0
+  private static OCR_COOLDOWN_MS = 30 * 1000  // 30 秒冷却
+
+  /** 判断窗口标题是否需要 OCR 补充 */
+  private needsOcr(title: string): boolean {
+    if (!title || title.length < 15) return false
+    const lower = title.toLowerCase()
+    const vagueKeywords = ['chrome', 'firefox', 'edge', 'browser', '浏览器', 'new tab', 'untitled']
+    return vagueKeywords.some(k => lower.includes(k))
+  }
+
   private async check(goal: Goal): Promise<WindowJudgeResult | null> {
     if (!this.llm.isConfigured('generate')) return null
 
@@ -84,7 +96,25 @@ export class WindowJudgeScheduler {
 
     if (records.length === 0) return null
 
-    const { system, user } = buildWindowHistoryJudgePrompt(goal, records)
+    // 判断是否需要 OCR（窗口标题不够判断 + 冷却已过）
+    let ocrText: string | undefined
+    const lastRecord = records[records.length - 1]
+    const now = Date.now()
+    if (lastRecord && this.needsOcr(lastRecord.windowTitle) && (now - this.lastOcrAt) > WindowJudgeScheduler.OCR_COOLDOWN_MS) {
+      try {
+        ocrText = await captureAndOcr()
+        this.lastOcrAt = now
+        // 截取前 500 字符避免 prompt 过长
+        if (ocrText && ocrText.length > 500) {
+          ocrText = ocrText.slice(0, 500) + '...'
+        }
+        console.log('[WindowJudge] OCR text:', ocrText?.slice(0, 100))
+      } catch (e) {
+        console.error('[WindowJudge] OCR failed', e)
+      }
+    }
+
+    const { system, user } = buildWindowHistoryJudgePrompt(goal, records, ocrText)
 
     try {
       const raw = await this.llm.chat(

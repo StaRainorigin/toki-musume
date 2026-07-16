@@ -20,6 +20,11 @@ export async function listenForegroundWindowChanged(cb: (win: ForegroundWindow) 
   })
 }
 
+/** 截屏 + OCR，返回识别到的文字 */
+export async function captureAndOcr(): Promise<string> {
+  return invoke<string>('capture_and_ocr')
+}
+
 // ===== 数据库初始化 =====
 export async function initDatabase(): Promise<string> {
   return invoke<string>('init_database')

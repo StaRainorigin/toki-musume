@@ -26,6 +26,8 @@ vi.mock('./tauri-bridge', () => ({
   writeConfigFile: vi.fn().mockResolvedValue(undefined),
   openConfigDir: vi.fn().mockResolvedValue(''),
   readLogs: vi.fn().mockResolvedValue([]),
+  listenForegroundWindowChanged: vi.fn().mockResolvedValue(() => {}),
+  captureAndOcr: vi.fn().mockResolvedValue(''),
 }))
 
 // Mock window.setInterval/clearInterval

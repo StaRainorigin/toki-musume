@@ -35,6 +35,11 @@ fn stop_window_hook() -> Result<(), String> {
 }
 
 #[tauri::command]
+fn capture_and_ocr() -> Result<String, String> {
+    winapi::capture_and_ocr()
+}
+
+#[tauri::command]
 fn init_database(app: tauri::AppHandle) -> Result<String, String> {
     let app_dir = get_app_data_dir()?;
     std::fs::create_dir_all(&app_dir)
@@ -166,6 +171,7 @@ pub fn run() {
             get_idle_ms,
             start_window_hook,
             stop_window_hook,
+            capture_and_ocr,
             init_database,
             append_log,
             read_logs,
