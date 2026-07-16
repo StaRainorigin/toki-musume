@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import ChatPanel from './components/ChatPanel.vue'
 import MessageInput from './components/MessageInput.vue'
@@ -10,6 +10,7 @@ import HistoryView from './components/HistoryView.vue'
 import DebugPanel from './components/DebugPanel.vue'
 import TaskList from './components/TaskList.vue'
 import PomodoroTimer from './components/PomodoroTimer.vue'
+import Live2DCanvas from './components/Live2DCanvas.vue'
 import { useController } from './composables/useController'
 import { useModeIcons } from './composables/useModeIcons'
 import { useTheme } from './composables/useTheme'
@@ -36,6 +37,28 @@ const showThemePicker = ref(false)
 
 const currentModeInfo = computed(() => modeInfo[mode.value])
 const pendingSuggestions = ref<TaskSuggestion[]>([])
+const justCompletedTask = ref(false)
+const prevSlackCount = ref(0)
+
+// 监听 slackCount 变化来触发摸鱼表情
+watch(slackCount, (newVal) => {
+  if (newVal > prevSlackCount.value) {
+    // 摸鱼了
+  }
+  prevSlackCount.value = newVal
+})
+
+// 监听任务完成
+watch(tasks, (newTasks, oldTasks) => {
+  if (oldTasks && newTasks) {
+    const oldCompleted = oldTasks.filter(t => t.status === 'completed').length
+    const newCompleted = newTasks.filter(t => t.status === 'completed').length
+    if (newCompleted > oldCompleted) {
+      justCompletedTask.value = true
+      setTimeout(() => { justCompletedTask.value = false }, 5000)
+    }
+  }
+}, { deep: true })
 
 async function handleGeneratePlan() {
   const suggestions = await generateDailyPlan()
@@ -84,9 +107,6 @@ onUnmounted(() => {
   <div class="app" :class="`app--${mode}`">
     <header class="app-header">
       <div class="avatar-area">
-        <div class="avatar">
-          <Icon :icon="currentModeInfo.icon" width="28" />
-        </div>
         <div class="char-info">
           <span class="char-name">{{ persona.characterName }}</span>
           <span class="char-status">{{ currentModeInfo.status }}</span>
@@ -118,6 +138,14 @@ onUnmounted(() => {
         </button>
       </div>
     </header>
+
+    <!-- Live2D 角色 -->
+    <Live2DCanvas
+      :mode="mode"
+      :pomodoro-phase="pomodoroDisplay.phase"
+      :slack-count="slackCount"
+      :just-completed-task="justCompletedTask"
+    />
 
     <DebugPanel v-if="showDebug" @close="showDebug = false" />
 
@@ -236,20 +264,6 @@ onUnmounted(() => {
 .avatar-area {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-}
-
-.avatar {
-  width: var(--avatar-size);
-  height: var(--avatar-size);
-  border-radius: 50%;
-  background: var(--color-bg-card);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow-sm);
-  border: 2px solid var(--color-border-light);
-  color: var(--color-accent);
 }
 
 .char-info {
