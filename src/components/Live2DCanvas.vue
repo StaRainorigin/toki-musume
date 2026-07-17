@@ -18,18 +18,21 @@ onMounted(async () => {
   if (!canvasRef.value) return
   try {
     await init(canvasRef.value, '/live2d/haru/haru_greeter_t03.model3.json')
-    updateFromState(props.mode, props.pomodoroPhase, props.slackCount, props.justCompletedTask)
+    if (loaded.value) {
+      updateFromState(props.mode, props.pomodoroPhase, props.slackCount, props.justCompletedTask)
+    } else {
+      hasError.value = true
+    }
   } catch (e) {
     console.error('[Live2DCanvas] init failed', e)
     hasError.value = true
   }
 })
 
-// 监听状态变化，切换表情
 watch(
   () => [props.mode, props.pomodoroPhase, props.slackCount, props.justCompletedTask],
   () => {
-    if (loaded.value) {
+    if (loaded.value && !hasError.value) {
       updateFromState(props.mode, props.pomodoroPhase, props.slackCount, props.justCompletedTask)
     }
   },
@@ -42,7 +45,11 @@ onUnmounted(() => {
 
 <template>
   <div class="live2d-container">
-    <canvas v-if="!hasError" ref="canvasRef" class="live2d-canvas"></canvas>
+    <canvas v-show="!hasError && loaded" ref="canvasRef" class="live2d-canvas"></canvas>
+    <!-- Loading -->
+    <div v-if="!hasError && !loaded" class="loading-avatar">
+      <Icon icon="tabler:loader-2" width="32" class="spin-icon" />
+    </div>
     <!-- Fallback: Icon -->
     <div v-if="hasError" class="fallback-avatar">
       <Icon
@@ -66,6 +73,22 @@ onUnmounted(() => {
 .live2d-canvas {
   width: 100%;
   height: 100%;
+}
+
+.loading-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .fallback-avatar {

@@ -151,7 +151,7 @@ fn capture_region(x: i32, y: i32, width: usize, height: usize) -> Result<Vec<u8>
 
         let hbitmap = CreateCompatibleBitmap(hdc_screen, width as i32, height as i32);
         if hbitmap.is_invalid() {
-            DeleteDC(hdc_mem);
+            let _ = DeleteDC(hdc_mem);
             ReleaseDC(HWND::default(), hdc_screen);
             return Err("CreateCompatibleBitmap 失败".to_string());
         }
@@ -162,8 +162,8 @@ fn capture_region(x: i32, y: i32, width: usize, height: usize) -> Result<Vec<u8>
         let ok = BitBlt(hdc_mem, 0, 0, width as i32, height as i32, hdc_screen, x, y, SRCCOPY);
         if ok.is_err() {
             SelectObject(hdc_mem, old_obj);
-            DeleteObject(hbitmap);
-            DeleteDC(hdc_mem);
+            let _ = DeleteObject(hbitmap);
+            let _ = DeleteDC(hdc_mem);
             ReleaseDC(HWND::default(), hdc_screen);
             return Err("BitBlt 失败".to_string());
         }
@@ -187,8 +187,8 @@ fn capture_region(x: i32, y: i32, width: usize, height: usize) -> Result<Vec<u8>
 
         // 清理 GDI 资源
         SelectObject(hdc_mem, old_obj);
-        DeleteObject(hbitmap);
-        DeleteDC(hdc_mem);
+        let _ = DeleteObject(hbitmap);
+        let _ = DeleteDC(hdc_mem);
         ReleaseDC(HWND::default(), hdc_screen);
 
         if result == 0 {

@@ -1,6 +1,6 @@
 import { ref, onUnmounted } from 'vue'
 import * as PIXI from 'pixi.js'
-import { Live2DModel } from 'pixi-live2d-display'
+import { Live2DModel } from 'pixi-live2d-display/cubism4'
 
 // 注册 Live2D 到 PIXI
 Live2DModel.registerTicker(PIXI.Ticker)
