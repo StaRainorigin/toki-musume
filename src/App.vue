@@ -10,7 +10,6 @@ import HistoryView from './components/HistoryView.vue'
 import DebugPanel from './components/DebugPanel.vue'
 import TaskList from './components/TaskList.vue'
 import PomodoroTimer from './components/PomodoroTimer.vue'
-import Live2DCanvas from './components/Live2DCanvas.vue'
 import { useController } from './composables/useController'
 import { useModeIcons } from './composables/useModeIcons'
 import { useTheme } from './composables/useTheme'
@@ -138,14 +137,6 @@ onUnmounted(() => {
         </button>
       </div>
     </header>
-
-    <!-- Live2D 角色 -->
-    <Live2DCanvas
-      :mode="mode"
-      :pomodoro-phase="pomodoroDisplay.phase"
-      :slack-count="slackCount"
-      :just-completed-task="justCompletedTask"
-    />
 
     <DebugPanel v-if="showDebug" @close="showDebug = false" />
 

@@ -164,6 +164,13 @@ pub fn run() {
                 .build(app)?;
             // 启动窗口事件钩子
             winapi::start_foreground_hook(app.handle().clone())?;
+            // 确保主窗口显示并聚焦
+            if let Some(main_window) = app.get_webview_window("main") {
+                let _ = main_window.show();
+                let _ = main_window.set_focus();
+                let _ = main_window.set_always_on_top(true);
+                let _ = main_window.set_always_on_top(false);
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

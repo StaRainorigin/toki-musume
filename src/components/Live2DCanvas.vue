@@ -16,6 +16,9 @@ const { init, updateFromState, destroy, loaded } = useLive2D()
 
 onMounted(async () => {
   if (!canvasRef.value) return
+  // 设置 canvas 尺寸为接近模型宽高比（Haru 约 1:1.8）
+  canvasRef.value.width = 300
+  canvasRef.value.height = 540
   try {
     await init(canvasRef.value, '/live2d/haru/haru_greeter_t03.model3.json')
     if (loaded.value) {
@@ -46,16 +49,11 @@ onUnmounted(() => {
 <template>
   <div class="live2d-container">
     <canvas v-show="!hasError && loaded" ref="canvasRef" class="live2d-canvas"></canvas>
-    <!-- Loading -->
     <div v-if="!hasError && !loaded" class="loading-avatar">
       <Icon icon="tabler:loader-2" width="32" class="spin-icon" />
     </div>
-    <!-- Fallback: Icon -->
     <div v-if="hasError" class="fallback-avatar">
-      <Icon
-        :icon="props.mode === 'focus' ? 'tabler:focus-2' : 'tabler:coffee'"
-        width="40"
-      />
+      <Icon :icon="props.mode === 'focus' ? 'tabler:focus-2' : 'tabler:coffee'" width="40" />
     </div>
   </div>
 </template>
@@ -63,22 +61,25 @@ onUnmounted(() => {
 <style scoped>
 .live2d-container {
   width: 100%;
-  height: 200px;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: transparent;
+  pointer-events: auto;
 }
 
 .live2d-canvas {
+  display: block;
   width: 100%;
   height: 100%;
+  object-fit: contain;
 }
 
 .loading-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   color: var(--color-text-muted);
 }
 
@@ -92,15 +93,12 @@ onUnmounted(() => {
 }
 
 .fallback-avatar {
-  width: var(--avatar-size);
-  height: var(--avatar-size);
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: var(--color-bg-card);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-sm);
-  border: 2px solid var(--color-border-light);
-  color: var(--color-accent);
+  color: #ff8fa3;
 }
 </style>

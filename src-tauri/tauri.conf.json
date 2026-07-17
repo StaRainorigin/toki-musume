@@ -12,9 +12,24 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "toki-musume",
         "width": 800,
-        "height": 600
+        "height": 600,
+        "visible": true
+      },
+      {
+        "label": "live2d",
+        "title": "",
+        "url": "live2d.html",
+        "width": 300,
+        "height": 500,
+        "resizable": true,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": true
       }
     ],
     "security": {

@@ -15,13 +15,15 @@ export function useLive2D() {
 
   async function init(canvasEl: HTMLCanvasElement, modelPath: string): Promise<void> {
 
-    // 创建 PIXI 应用
+    // 创建 PIXI 应用 — 用窗口尺寸
+    const width = canvasEl.width || 300
+    const height = canvasEl.height || 500
     const pixiApp = new PIXI.Application({
       view: canvasEl,
       autoStart: true,
       backgroundAlpha: 0,
-      width: canvasEl.clientWidth || 200,
-      height: canvasEl.clientHeight || 250,
+      width,
+      height,
       antialias: true,
     })
     app.value = pixiApp
@@ -31,11 +33,8 @@ export function useLive2D() {
       const m = await Live2DModel.from(modelPath)
       pixiApp.stage.addChild(m)
 
-      // 调整大小
-      const scale = Math.min(
-        pixiApp.renderer.width / m.width,
-        pixiApp.renderer.height / m.height,
-      ) * 0.9
+      // 按高度缩放，保持模型比例
+      const scale = (height / m.height) * 0.95
       m.scale.set(scale)
       m.anchor.set(0.5, 0.5)
       m.x = pixiApp.renderer.width / 2
@@ -46,9 +45,9 @@ export function useLive2D() {
 
       // 鼠标跟踪
       pixiApp.stage.interactive = true
-      pixiApp.stage.on('pointermove', (e: PIXI.FederatedPointerEvent) => {
+      pixiApp.stage.on('pointermove', (e: any) => {
         if (m) {
-          m.focus(e.globalX, e.globalY)
+          m.focus(e.data.global.x, e.data.global.y)
         }
       })
 
